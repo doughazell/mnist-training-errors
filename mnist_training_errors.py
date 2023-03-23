@@ -30,6 +30,8 @@ from models import *
 #import importlib
 #mymethod = getattr(importlib.import_module("models"), "mymethod")
 
+gotoGSheetTesting()
+
 print("-------------------------------------")
 print("TensorFlow version:", tf.__version__)
 print("-------------------------------------")
@@ -51,7 +53,7 @@ def displayImg(elem):
   
   #print("Dataset Element: ",elem," Expected: ",y_test[elem])
 
-  # 26/1/23 DH: Also need predicted (ie lowest softmax) to compare with image
+  # 26/1/23 DH: Also need predicted (ie highest softmax) to compare with image
   # (...why can't 'expected/definitive' be compared with 'predicted/softmax', so obviate image display...??? )
 
   # https://matplotlib.org/3.5.3/api/_as_gen/matplotlib.pyplot.html
@@ -85,12 +87,15 @@ imgNum = x_test.shape[0]
 #f.close()
 f = open("predicted-errors.txt", "w")
 
+softmaxList = probability_model(x_test).numpy()[0]
+print("\nSoftmax list for element 0 of 'x_test': ",softmaxList )
+
 iCnt = 0
 errorNum = 0
 
-print("\nLooping through",imgNum,"images from x_test")
-for elem in range(imgNum):
-#for elem in range(10):
+#print("\nLooping through",imgNum,"images from x_test")
+#for elem in range(imgNum):
+for elem in range(10):
 
   #if elem % 7000 == 0:
   #  displayImg(elem)
@@ -106,7 +111,7 @@ for elem in range(imgNum):
     errorNum = iCnt
 
   lastNum = elem
-  
+
 print("-----------")
 print("Last element: ",lastNum)
 print("Total errors: ",iCnt)
@@ -120,4 +125,9 @@ f.close()
 #displayImg(1)
 
 # ===========================================================================
-#getGSheetsData()
+
+sheet = getGSheet()
+getGSheetsData(sheet)
+updateSheet(sheet)
+
+

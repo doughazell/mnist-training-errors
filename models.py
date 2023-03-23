@@ -140,13 +140,16 @@ def getPredicted(elem, probability_model):
 # 25/1/23 DH: Add google sheets code from 'kivy-gapp' ('table.py', 'main.py')
 # ----------------------------------------------------------------------------
 import gspread
+
+# 20/3/23 DH: https://oauth2client.readthedocs.io/en/latest/_modules/oauth2client/service_account.html#ServiceAccountCredentials
+# 20/3/23 DH: https://google-auth.readthedocs.io/en/latest/oauth2client-deprecation.html
 from oauth2client.service_account import ServiceAccountCredentials
 
 # 18/3/23 DH:
 def getGSheet():
   try:
-    # 2/11/17 DH:
-    # use creds to create a client to interact with the Google Drive API
+    # 2/11/17 DH: use creds to create a client to interact with the Google Drive API
+
     # 9/7/18 DH: Upgrade to gspread >2.0.0
     #scope = ['https://spreadsheets.google.com/feeds']
     scope = ['https://spreadsheets.google.com/feeds',
@@ -157,36 +160,23 @@ def getGSheet():
     #creds = ServiceAccountCredentials.from_json_keyfile_name('python-sheets.json', scope)
     client = gspread.authorize(creds)
 
-    print('Opening \'Addresses:Personal\'...')
-    sheet = client.open("Addresses").worksheet("Personal")
+    #print('Opening \'Addresses:Personal\'...')
+    #sheet = client.open("Addresses").worksheet("Personal")
+
+    # 21/3/23 DH:
+    print('Opening \'Addresses:mnist-errors\'...')
+    sheet = client.open("Addresses").worksheet("mnist-errors")
     return sheet
   
   except:
     raise
 
 def getHeadings(sheet):
-  '''
-  print self.list_of_dicts
-
-  print '-----------------------------'
-  keyList = sorted(self.list_of_dicts[0].keys())
-  print keyList
-  print keyList[0]
-  print '-----------------------------'
-  '''
-
-  print ('REQUEST TO DB for row 1 (ie headings)')
-  headings = filter(None, sheet.row_values(1))
-
-  #lastCol = len(headings)
-  #orderCell = [1,lastCol]
-
   # 28/6/18 DH: Col order is the last heading
   # 26/1/23 DH: https://diveintopython3.net/porting-code-to-python-3-with-2to3.html#filter
+  print ('REQUEST TO DB for row 1 (ie headings)')
+  headings = filter(None, sheet.row_values(1))
   headingsList = list(headings) 
-  order = headingsList.pop()
-  print ('Order: ', order)
-  txt1_text = order
 
   lbl2_text = ''
   hdsIndexed = {}
@@ -201,7 +191,7 @@ def getHeadings(sheet):
   #print(hdsIndexed)
   return hdsIndexed
 
-
+# 20/3/23 DH: Needs a refactor from kivy-gapp hack of gsheet app in 2018
 def getGSheetsData(sheet):
   try:
     print('REQUEST TO DB for all records')
@@ -209,12 +199,10 @@ def getGSheetsData(sheet):
 
     record_num = len(list_of_dicts)
 
-    lbl1_text = str(record_num) + ' records'
-
     hdsIndexed = getHeadings(sheet)
 
     #cols = main.txt1.text.split(",")
-    cols = "3,4,5,6,7".split(",")
+    cols = "3,4,5,6".split(",")
 
     # === Rows ===
     for idx in range(0,record_num):
@@ -231,16 +219,10 @@ def getGSheetsData(sheet):
         # 22/3/18 DH: Selected cols added as specified in TextInput 'txt1'
         colsIndexed = dict(zip(range(1,8), values))
 
-        #print '-----------------------------'
-        #print values
-        #print self.hdsIndexed
-
         for col in cols:
           #ROW: values = self.list_of_dicts[idx]
           #COL HEADINGS: self.hdsIndexed
           #printStr = str(col) + ' = ' + hdsIndexed.get(int(col)) + ' = ' + values.get(hdsIndexed.get(int(col)))
-          #print(printStr)
-          #print '-----------------------------'
 
           #lbl_text += colsIndexed.get(int(col)) + '\n'
           lbl_text += str(values.get( hdsIndexed.get(int(col)) )) + '\n'
@@ -255,33 +237,59 @@ def getGSheetsData(sheet):
     #print values
     raise
 
-# 19/3/23 DH:
-def exceedsGridLimits(row,col,respStr):
-    respDict = eval(respStr)
-    #print(type(respDict))
-    print(respDict['message'])
+# 19/3/23 DH: gspread.exceptions.APIError: {'code': 400, 
+# 'message': 'Range (Personal!H5) exceeds grid limits. Max rows: 4, max columns: 26', 
+# 'status': 'INVALID_ARGUMENT'}
+def exceedsGridLimits(sheet,row,col,respStr):
+  respDict = eval(respStr)
+  #print(type(respDict))
+  print(respDict['message'])
 
-    respStrParts = respDict['message'].split(".")
-    respMsgParts = respStrParts[1].lower().split(",")
+  # 'message': 'Range (Personal!H5) exceeds grid limits. Max rows: 4, max columns: 26'
+  respStrParts = respDict['message'].split(".")
+  # 'Max rows: 4, max columns: 26'
+  respMsgParts = respStrParts[1].lower().split(",")
 
-    msgPartDict = {}
-    for msgPart in respMsgParts:
-      msgParts = msgPart.split(":")
-      k = msgParts[0].strip()
-      v = msgParts[1].strip()
+  msgPartDict = {}
+  for msgPart in respMsgParts:
+    msgParts = msgPart.split(":")
+    k = msgParts[0].strip()
+    v = msgParts[1].strip()
 
-      msgPartDict[k] = v
+    msgPartDict[k] = v
 
-    if row > int(msgPartDict['max rows']):
-      print("Need to add row since",row,"is greater than",msgPartDict['max rows'])
+  # 19/3/23 DH: https://docs.gspread.org/en/v3.7.0/api.html#gspread.models.Worksheet.resize
+  if row > int(msgPartDict['max rows']):
+    print("Need to add row since",row,"is greater than",msgPartDict['max rows'])
+    sheet.resize(rows=row)
 
-    if col > int(msgPartDict['max columns']):
-      print("Need to add col since",col,"is greater than",msgPartDict['max columns'])
+  if col > int(msgPartDict['max columns']):
+    print("Need to add col since",col,"is greater than",msgPartDict['max columns'])
+    sheet.resize(cols=col)
 
+# 23/3/23 DH: ...still in energy lockdown like kivy-gapp in 2017...
+def checkEmpty(sheet, row, col, text):
+  valueList = sheet.range(row,col)
+  #print("Value at",row,",",col,":",valueList[0].value)
+
+  if valueList[0].value:
+    splitStr = "..."
+    valueParts = valueList[0].value.split(splitStr)
+    
+    if not valueParts[1]:
+      valueParts[1] = str(2)
+    else:
+      valueParts[1] = str(int(valueParts[1]) + 1)
+
+    newValue = valueParts[0] + splitStr + valueParts[1]
+    return newValue
+
+  return text
 
 # 18/3/23 DH:
 def updateSheet(sheet, row, col, text):
   try:
+    text = checkEmpty(sheet, row, col, text)
     print("Adding",text,"to",row,",",col)
     sheet.update_cell(row, col, text) 
 
@@ -297,8 +305,8 @@ def updateSheet(sheet, row, col, text):
     # 'message': 'Range (Personal!H5) exceeds grid limits. Max rows: 4, max columns: 26', 
     # 'status': 'INVALID_ARGUMENT'}
     if "exceeds grid limits" in respStr:
-      exceedsGridLimits(row,col,respStr)
-    
+      exceedsGridLimits(sheet,row,col,respStr)
+      updateSheet(sheet,row,col,text)
     else:
       print(respStr)
 
@@ -307,7 +315,7 @@ def gotoGSheetTesting():
   try:
     sheet = getGSheet()
     getGSheetsData(sheet)
-    updateSheet(sheet,5,27,"ooh yea...")
+    updateSheet(sheet,2,9,"ooh yea...")
 
   except:
     raise
