@@ -6,6 +6,10 @@ import numpy as np
 # 19/3/23 DH:
 import sys
 
+# 25/3/23 DH: overridden since still created '__pycache__/models.cpython-39.pyc'
+#             'python -B' still caused "'date" in gsheet hence string not date...!
+#sys.dont_write_bytecode = True
+
 """## Load a dataset
 
 Load and prepare the [MNIST dataset](http://yann.lecun.com/exdb/mnist/). Convert the sample data from integers to floating-point numbers 
@@ -145,6 +149,9 @@ import gspread
 # 20/3/23 DH: https://google-auth.readthedocs.io/en/latest/oauth2client-deprecation.html
 from oauth2client.service_account import ServiceAccountCredentials
 
+# 25/3/23 DH:
+from datetime import date
+
 # 18/3/23 DH:
 def getGSheet():
   try:
@@ -192,49 +199,64 @@ def getHeadings(sheet):
   return hdsIndexed
 
 # 20/3/23 DH: Needs a refactor from kivy-gapp hack of gsheet app in 2018
+# 26/3/23 DH: ...done
 def getGSheetsData(sheet):
   try:
     print('REQUEST TO DB for all records')
     list_of_dicts = sheet.get_all_records(head=1)
-
     record_num = len(list_of_dicts)
 
-    hdsIndexed = getHeadings(sheet)
+    # 26/3/23 DH: 'get_all_records()' "head (int) – Determines which row to use as keys...:
+    #             (so 'getHeadings()' is a legacy from kivy-gapp development and unnecessary)
+    #hdsIndexed = getHeadings(sheet)
 
-    #cols = main.txt1.text.split(",")
-    cols = "3,4,5,6".split(",")
+    keyStr = ''
+    keyStrUnderline = ''
+    keyList = list_of_dicts[0].keys()
 
-    # === Rows ===
+    for key in keyList:
+      if key:
+        keyStr += key + ", "
+        # 26/3/23 DH: Add underline string for len of each key
+        keyStrUnderline += ('-' * len(key)) + '  '
+    
+    print(keyStr)
+    print(keyStrUnderline)
+
     for idx in range(0,record_num):
-      lbl_text = ''
-
-      print('REQUEST TO DB for row ',str(idx+2))
-      #values = sheet.row_values(idx+2)
-
       values = list_of_dicts[idx]
+      #print("Record ",idx+1,":",values)
 
-      if values:
-        # ||| Cols |||
+      recordStr = ''
 
-        # 22/3/18 DH: Selected cols added as specified in TextInput 'txt1'
-        colsIndexed = dict(zip(range(1,8), values))
+      for key in keyList:
+        if key:
+          # 26/3/23 DH: Number of trailing spaces is determined by heading string len, except date
+          cellValue = str(values[key])
+          cellValueLen = len(cellValue)
+          if "Date" in key:
+            keyLen = 7
+          else:
+            keyLen = len(key) + 1
 
-        for col in cols:
+          recordStr += cellValue + "," + (' ' * (keyLen - cellValueLen ) )
+      
+      print(recordStr)
+
+      # -----------------------------------------------------------------------------------------
+      # 26/3/23 DH: Legacy from kivy-gapp where display order was specified by "cols" cell string
+      #lbl_text = ''
+      #if values:
+        #for col in cols:
           #ROW: values = self.list_of_dicts[idx]
           #COL HEADINGS: self.hdsIndexed
-          #printStr = str(col) + ' = ' + hdsIndexed.get(int(col)) + ' = ' + values.get(hdsIndexed.get(int(col)))
-
-          #lbl_text += colsIndexed.get(int(col)) + '\n'
-          lbl_text += str(values.get( hdsIndexed.get(int(col)) )) + '\n'
-
-        # Add record to carousel
-        print ("Adding:")
-        print (lbl_text)
-          
+       
+          #lbl_text += str(values.get( hdsIndexed.get(int(col)) )) + '\n'
+      # -----------------------------------------------------------------------------------------
+    print()
 
   except:
     # 29/5/18 DH: Debug only
-    #print values
     raise
 
 # 19/3/23 DH: gspread.exceptions.APIError: {'code': 400, 
@@ -268,28 +290,35 @@ def exceedsGridLimits(sheet,row,col,respStr):
     sheet.resize(cols=col)
 
 # 23/3/23 DH: ...still in energy lockdown like kivy-gapp in 2017...
-def checkEmpty(sheet, row, col, text):
+# 24/3/23 DH: Needs a 'pytest' string parsing auto test
+def checkEmpty(sheet, row, col, text, splitStr=None):
   valueList = sheet.range(row,col)
   #print("Value at",row,",",col,":",valueList[0].value)
 
-  if valueList[0].value:
-    splitStr = "..."
+  if valueList[0].value and text in valueList[0].value:
+    
     valueParts = valueList[0].value.split(splitStr)
     
     if not valueParts[1]:
       valueParts[1] = str(2)
     else:
-      valueParts[1] = str(int(valueParts[1]) + 1)
+      try:
+        valueParts[1] = str(int(valueParts[1]) + 1)
 
-    newValue = valueParts[0] + splitStr + valueParts[1]
-    return newValue
+      except (ValueError) as error:
+        print(error)
+        print("The split string is",splitStr)
+
+    if splitStr:
+      newValue = valueParts[0] + splitStr + valueParts[1]
+      return newValue
 
   return text
 
 # 18/3/23 DH:
 def updateSheet(sheet, row, col, text):
   try:
-    text = checkEmpty(sheet, row, col, text)
+    text = checkEmpty(sheet, row, col, text, splitStr="...")
     print("Adding",text,"to",row,",",col)
     sheet.update_cell(row, col, text) 
 
@@ -310,12 +339,34 @@ def updateSheet(sheet, row, col, text):
     else:
       print(respStr)
 
+# 25/3/23 DH:
+def addRow(sheet, dense, dropout, training_num, test_num, errors):
+  try:
+    newrow = []
+    
+    # 25/3/23 DH: Date getting added with prepended ' so not recognised as date by gsheet...ffs...!!!
+    #             (an opportunity to "sail the luff" rather than "beat to wind")
+    today = date.today().strftime('%d%b')
+    print(today)
+    newrow.append(today)
+
+    newrow.append(dense)
+    newrow.append(dropout)
+    newrow.append(training_num)
+    newrow.append(test_num)
+    newrow.append(errors)
+
+    sheet.append_row(newrow, table_range='A:F')
+  except Exception as error:
+    print("Error with append_row():",error)
+
 # ========================================== TESTING ============================================
 def gotoGSheetTesting():
   try:
     sheet = getGSheet()
     getGSheetsData(sheet)
     updateSheet(sheet,2,9,"ooh yea...")
+    addRow(sheet, 128, 0.2, 60000, 10000, 716)
 
   except:
     raise
