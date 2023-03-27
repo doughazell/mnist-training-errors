@@ -30,22 +30,24 @@ from models import *
 #import importlib
 #mymethod = getattr(importlib.import_module("models"), "mymethod")
 
-gotoGSheetTesting()
+#gotoGSheetTesting()
 
 print("-------------------------------------")
 print("TensorFlow version:", tf.__version__)
 print("-------------------------------------")
 
 """## Train and evaluate your model"""
-model = createModel()
+dense1 = 128
+dropout1 = 0.2
+x_trainNum = x_train
+y_trainNum = y_train
+model = createModel(dense1=dense1, dropout1=dropout1, x_trainNum=x_trainNum, y_trainNum=y_trainNum)
 
 print("\n--- model.evaluate() ---")
 print("Using x_train + y_train (%i): "%(x_train.shape[0]))
 model.evaluate(x_train,  y_train, verbose=2)
-model.evaluate(x_train,  y_train, verbose=2)
 print("***")
 print("Using x_test + y_test (%i): "%(x_test.shape[0]))
-model.evaluate(x_test,  y_test, verbose=2)
 model.evaluate(x_test,  y_test, verbose=2)
 
 # ----------------------------------------------------------------------
@@ -93,9 +95,9 @@ print("\nSoftmax list for element 0 of 'x_test': ",softmaxList )
 iCnt = 0
 errorNum = 0
 
-#print("\nLooping through",imgNum,"images from x_test")
-#for elem in range(imgNum):
-for elem in range(10):
+print("\nLooping through",imgNum,"images from x_test")
+for elem in range(imgNum):
+#for elem in range(10):
 
   #if elem % 7000 == 0:
   #  displayImg(elem)
@@ -125,9 +127,11 @@ f.close()
 #displayImg(1)
 
 # ===========================================================================
-
+# 27/3/23 DH: Now add the results of the errors to gsheet
 sheet = getGSheet()
+updateSheet(sheet,2,9,"ooh yea...")
+#addRow(sheet, 128, 0.2, 60000, 10000, 716)
+addRow(sheet, dense=dense1, dropout=dropout1, training_num=x_trainNum.shape[0], test_num=imgNum, errors=iCnt)
 getGSheetsData(sheet)
-updateSheet(sheet)
 
 

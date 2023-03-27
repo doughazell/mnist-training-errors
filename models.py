@@ -31,65 +31,68 @@ x_train, x_test = x_train / 255.0, x_test / 255.0
 
 
 # ----------------------------------------------------------------------
-def createModel():
+# 27/3/23 DH:
+def createModel(dense1, dropout1, x_trainNum, y_trainNum):
+  # 15/3/23 DH: https://www.kirenz.com/post/2022-06-17-introduction-to-tensorflow-and-the-keras-functional-api/
+  #   "The Keras sequential model is easy to use, but its applicability is extremely limited: 
+  #    it can only express models with a single input and a single output, 
+  #    applying one layer after the other in a sequential fashion.
+
+  #    In practice, it’s pretty common to encounter models with multiple inputs (say, an image and its metadata),
+  #    multiple outputs (different things you want to predict about the data), or a nonlinear topology. 
+  #    In such cases, you’d build your model using the Functional API."
+  #
+  # ...well it seems that the Sequential() constructor has this built in now...
+  #    https://www.tensorflow.org/guide/keras/functional
+  model = tf.keras.models.Sequential([
+    tf.keras.layers.Flatten(input_shape=(28, 28)),
+
+    # 15/3/23 DH: Learn about TensorFlow training by finding total error diff of removing following sections
+    #             https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense
+    # 16/3/23 DH: 784->10 so {700,600,500,400,300,200,128,100}
+    #tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.Dense(dense1, activation='relu'),
+
+    # 18/3/23 DH: https://keras.io/api/layers/regularization_layers/dropout/
+    #   "Dropout layer randomly sets input units to 0 with freq of rate at each step during training time, 
+    #    which helps PREVENT OVERFITTING. (ie fuzzy logic) 
+    #    Inputs not set to 0 are SCALED UP by 1/(1 - rate) such that SUM over all inputs is UNCHANGED"
+
+    # 16/3/23 DH: {1.0,0.9,...,0.2,0.1,0}
+    #tf.keras.layers.Dropout(0.2),
+    tf.keras.layers.Dropout(dropout1),
+
+    # 16/3/23 DH: Condense to decimal digit bucket set
+    tf.keras.layers.Dense(10)
+  ])
+  
+  loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+
+  model.compile(optimizer='adam',
+                loss=loss_fn,
+                metrics=['accuracy'])
+
+  print("\n--- model.fit() ---")
+  print("Using x_train + y_train (%i): "%(x_train.shape[0]))
+  #model.fit(x_train, y_train, epochs=5)
+  model.fit(x_trainNum, y_trainNum, epochs=5)
+
+  #print("Using x_test + y_test (%i): "%(x_test.shape[0]))
+  #model.fit(x_test, y_test, epochs=1)
+
+  return model
+
+
+def createSavedModel():
   try:
     model = tf.keras.models.load_model("mnist_training_errors")
   except OSError as e:
-    # model doesn't exist, build it.
+    # model doesn't exist, build it...
 
-    # 15/3/23 DH: https://www.kirenz.com/post/2022-06-17-introduction-to-tensorflow-and-the-keras-functional-api/
-    #   "The Keras sequential model is easy to use, but its applicability is extremely limited: 
-    #    it can only express models with a single input and a single output, 
-    #    applying one layer after the other in a sequential fashion.
+    # 27/3/23 DH:
+    model = createModel()
 
-    #    In practice, it’s pretty common to encounter models with multiple inputs (say, an image and its metadata),
-    #    multiple outputs (different things you want to predict about the data), or a nonlinear topology. 
-    #    In such cases, you’d build your model using the Functional API."
-    #
-    # ...well it seems that the Sequential() constructor has this built in now...
-    #    https://www.tensorflow.org/guide/keras/functional
-    model = tf.keras.models.Sequential([
-      tf.keras.layers.Flatten(input_shape=(28, 28)),
-
-      # 15/3/23 DH: Learn about TensorFlow training by finding total error diff of removing following sections
-      #             https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense
-      # 16/3/23 DH: 784->10 so {700,600,500,400,300,200,128,100}
-      tf.keras.layers.Dense(128, activation='relu'),
-
-      # 18/3/23 DH: https://keras.io/api/layers/regularization_layers/dropout/
-      #   "Dropout layer randomly sets input units to 0 with freq of rate at each step during training time, 
-      #    which helps PREVENT OVERFITTING. (ie fuzzy logic) 
-      #    Inputs not set to 0 are SCALED UP by 1/(1 - rate) such that SUM over all inputs is UNCHANGED"
-
-      # 16/3/23 DH: {1.0,0.9,...,0.2,0.1,0}
-      tf.keras.layers.Dropout(0.2),
-
-      # 16/3/23 DH: Condense to decimal digit bucket set
-      tf.keras.layers.Dense(10)
-    ])
-    
-    loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-    
-    #print("x_train[:1]: ",x_train[:1].shape)
-    #predictions = model(x_train[:1]).numpy()
-    #tf.nn.softmax(predictions).numpy()
-    #loss_fn(y_train[:1], predictions).numpy()
-
-    model.compile(optimizer='adam',
-                  loss=loss_fn,
-                  metrics=['accuracy'])
-
-    print("\n--- model.fit() ---")
-    #25/1/23 DH: model.fit(x_train[:30000], y_train[:30000], epochs=1)
-    
-    #print("Using x_train + y_train (%i): "%(x_train.shape[0]))
-    #model.fit(x_train, y_train, epochs=5)
-    
-    print("Using x_test + y_test (%i): "%(x_test.shape[0]))
-    model.fit(x_test, y_test, epochs=1)
-
-    # 23/1/23 DH: Can the model be saved after training to prevent the need for retraining...???
-    # ...yip...https://www.tensorflow.org/guide/keras/save_and_serialize
+    # 23/1/23 DH: https://www.tensorflow.org/guide/keras/save_and_serialize
     model.save("mnist_training_errors")
 
     # 15/3/23 DH:
@@ -178,6 +181,8 @@ def getGSheet():
   except:
     raise
 
+# 26/3/23 DH: 'get_all_records()' "head (int) – Determines which row to use as keys...:
+#             (so 'getHeadings()' is a legacy from kivy-gapp development and unnecessary)
 def getHeadings(sheet):
   # 28/6/18 DH: Col order is the last heading
   # 26/1/23 DH: https://diveintopython3.net/porting-code-to-python-3-with-2to3.html#filter
@@ -202,7 +207,7 @@ def getHeadings(sheet):
 # 26/3/23 DH: ...done
 def getGSheetsData(sheet):
   try:
-    print('REQUEST TO DB for all records')
+    print('\nREQUEST TO DB for all records')
     list_of_dicts = sheet.get_all_records(head=1)
     record_num = len(list_of_dicts)
 
@@ -216,9 +221,13 @@ def getGSheetsData(sheet):
 
     for key in keyList:
       if key:
-        keyStr += key + ", "
-        # 26/3/23 DH: Add underline string for len of each key
-        keyStrUnderline += ('-' * len(key)) + '  '
+        if "Date" in key:
+          keyLenDelta = 5
+          keyStr += key + (' ' * keyLenDelta)
+          keyStrUnderline += ('-' * len(key) ) + (' ' * keyLenDelta)
+        else:
+          keyStr += key + ", "
+          keyStrUnderline += ('-' * len(key) ) + '  '
     
     print(keyStr)
     print(keyStrUnderline)
@@ -234,8 +243,9 @@ def getGSheetsData(sheet):
           # 26/3/23 DH: Number of trailing spaces is determined by heading string len, except date
           cellValue = str(values[key])
           cellValueLen = len(cellValue)
+
           if "Date" in key:
-            keyLen = 7
+            keyLen = 8
           else:
             keyLen = len(key) + 1
 
@@ -253,6 +263,8 @@ def getGSheetsData(sheet):
        
           #lbl_text += str(values.get( hdsIndexed.get(int(col)) )) + '\n'
       # -----------------------------------------------------------------------------------------
+    # END: "for...in range(0,record_num)"
+
     print()
 
   except:
@@ -346,7 +358,7 @@ def addRow(sheet, dense, dropout, training_num, test_num, errors):
     
     # 25/3/23 DH: Date getting added with prepended ' so not recognised as date by gsheet...ffs...!!!
     #             (an opportunity to "sail the luff" rather than "beat to wind")
-    today = date.today().strftime('%d%b')
+    today = date.today().strftime('%d%b%y')
     print(today)
     newrow.append(today)
 
@@ -364,9 +376,9 @@ def addRow(sheet, dense, dropout, training_num, test_num, errors):
 def gotoGSheetTesting():
   try:
     sheet = getGSheet()
-    getGSheetsData(sheet)
     updateSheet(sheet,2,9,"ooh yea...")
     addRow(sheet, 128, 0.2, 60000, 10000, 716)
+    getGSheetsData(sheet)
 
   except:
     raise
