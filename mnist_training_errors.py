@@ -37,11 +37,13 @@ print("TensorFlow version:", tf.__version__)
 print("-------------------------------------")
 
 """## Train and evaluate your model"""
-dense1 = 128
-dropout1 = 0.2
-x_trainNum = x_train
-y_trainNum = y_train
-model = createModel(dense1=dense1, dropout1=dropout1, x_trainNum=x_trainNum, y_trainNum=y_trainNum)
+# 28/3/23 DH: 784->10 so {700,600,500,400,300,200,128,100}
+dense1 = 700
+# 28/3/23 DH: {0.9,...,0.2,0.1,0}
+dropout1 = 0
+x_trainSet = x_train
+y_trainSet = y_train
+model = createModel(dense1=dense1, dropout1=dropout1, x_trainSet=x_trainSet, y_trainSet=y_trainSet)
 
 print("\n--- model.evaluate() ---")
 print("Using x_train + y_train (%i): "%(x_train.shape[0]))
@@ -89,7 +91,8 @@ imgNum = x_test.shape[0]
 #f.close()
 f = open("predicted-errors.txt", "w")
 
-softmaxList = probability_model(x_test).numpy()[0]
+softmax2DList = probability_model(x_test).numpy()
+softmaxList = softmax2DList[0]
 print("\nSoftmax list for element 0 of 'x_test': ",softmaxList )
 
 iCnt = 0
@@ -102,7 +105,9 @@ for elem in range(imgNum):
   #if elem % 7000 == 0:
   #  displayImg(elem)
 
-  predictedVal = getPredicted(elem, probability_model)
+  # 29/3/23 DH: MAHOOSIVELY sped up checking images by calling 'probability_model(x_test).numpy()' once (above)
+  #predictedVal = getPredicted(elem, probability_model)
+  predictedVal = np.argmax(softmax2DList[elem])
   if y_test[elem] != predictedVal:
     f.write("Dataset Element: "+ str(elem) + " Expected: "+ str(y_test[elem]) + " Predicted: " + str(predictedVal) + "\n")
     #displayImg(elem)
@@ -131,7 +136,7 @@ f.close()
 sheet = getGSheet()
 updateSheet(sheet,2,9,"ooh yea...")
 #addRow(sheet, 128, 0.2, 60000, 10000, 716)
-addRow(sheet, dense=dense1, dropout=dropout1, training_num=x_trainNum.shape[0], test_num=imgNum, errors=iCnt)
+addRow(sheet, dense=dense1, dropout=dropout1, training_num=x_trainSet.shape[0], test_num=imgNum, errors=iCnt)
 getGSheetsData(sheet)
 
 
