@@ -20,4 +20,11 @@ $ time python mnist_training_errors.py
   user	1m42.566s
   sys	0m7.245s
 ```
-On my dual core macbook which indicates GPU usage of TensorFlow since 'user' time is 3 times 'clock' time
+
+When I was calling {DNN+Softmax Layer} with all images in order to get output for each image then time was:
+```
+  real	5m49.101s
+  user	15m44.567s
+  sys	0m46.122s
+```
+which indicates GPU usage of TensorFlow since 'user' time is 3 times 'clock' time on my dual core macbook (but only about twice for pure python code).
