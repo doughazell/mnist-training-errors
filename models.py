@@ -32,7 +32,7 @@ x_train, x_test = x_train / 255.0, x_test / 255.0
 
 # ----------------------------------------------------------------------
 # 27/3/23 DH:
-def createModel(dense1, dropout1, x_trainNum, y_trainNum):
+def createModel(dense1, dropout1, x_trainSet, y_trainSet):
   # 15/3/23 DH: https://www.kirenz.com/post/2022-06-17-introduction-to-tensorflow-and-the-keras-functional-api/
   #   "The Keras sequential model is easy to use, but its applicability is extremely limited: 
   #    it can only express models with a single input and a single output, 
@@ -44,6 +44,13 @@ def createModel(dense1, dropout1, x_trainNum, y_trainNum):
   #
   # ...well it seems that the Sequential() constructor has this built in now...
   #    https://www.tensorflow.org/guide/keras/functional
+  #
+  # 29/3/23 DH: The google suggested model uses a Fully Connected DNN (not a Convolution DNN)
+  #             https://medium.com/swlh/fully-connected-vs-convolutional-neural-networks-813ca7bc6ee5
+  #             
+  #             "The "full connectivity" of these networks make them prone to overfitting data."
+  #             https://en.wikipedia.org/wiki/Convolutional_neural_network
+  # ...hence the 'dropout' (which in my tests made things worse for black lines on white background...!)
   model = tf.keras.models.Sequential([
     tf.keras.layers.Flatten(input_shape=(28, 28)),
 
@@ -75,7 +82,7 @@ def createModel(dense1, dropout1, x_trainNum, y_trainNum):
   print("\n--- model.fit() ---")
   print("Using x_train + y_train (%i): "%(x_train.shape[0]))
   #model.fit(x_train, y_train, epochs=5)
-  model.fit(x_trainNum, y_trainNum, epochs=5)
+  model.fit(x_trainSet, y_trainSet, epochs=5)
 
   #print("Using x_test + y_test (%i): "%(x_test.shape[0]))
   #model.fit(x_test, y_test, epochs=1)
@@ -90,7 +97,10 @@ def createSavedModel():
     # model doesn't exist, build it...
 
     # 27/3/23 DH:
-    model = createModel()
+    #model = createModel()
+
+    # 28/3/23 DH:
+    model = createModel(dense1=128, dropout1=0.2, x_trainSet=x_train, y_trainSet=y_train)
 
     # 23/1/23 DH: https://www.tensorflow.org/guide/keras/save_and_serialize
     model.save("mnist_training_errors")
@@ -118,12 +128,15 @@ def getProbabilityModel(model):
     return probability_model
 
 # 27/1/23 DH:
+# 29/3/23 DH: MAHOOSIVELY sped up checking images by calling 'probability_model(x_test).numpy()' once,
+#             rather than entering ALL images ('x_test' input to {DNN + Softmax layer} ) for EACH image.
 def getPredicted(elem, probability_model):
   
   # 26/1/23 DH: Print index of highest prob ie predicted number
   mnistIndex = elem
   
   # 28/1/23 DH:
+  # 29/3/23 DH: This is what takes the 5-10mins time in checking predicted for 10000 images...!
   softmaxList = probability_model(x_test).numpy()[mnistIndex]
 
   # 26/1/23 DH: 'numpy.ndarray' object has no attribute 'index'
