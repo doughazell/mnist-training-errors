@@ -37,10 +37,10 @@ class TFConfig(object):
     print("Using x_test + y_test (%i): "%(x_test.shape[0]))
     self.tfModel.model.evaluate(x_test,  y_test, verbose=2)
 
-  def build(self):
-    self.dense1 = 784
-    self.dropout1 = None
-    self.trainingNum = x_train.shape[0]
+  def build(self, paramDict):
+    self.dense1 = paramDict['dense1']
+    self.dropout1 = paramDict['dropout1']
+    self.trainingNum = paramDict['trainingNum']
 
     model = self.tfModel.createModel(dense1=self.dense1, dropout1=self.dropout1, 
                                     x_trainSet=x_train, y_trainSet=y_train)
@@ -81,19 +81,36 @@ class TFConfig(object):
     f.write("Total errors: " + str(self.iCnt) + "\n")
     f.close()
 
-  def populateGSheet(self):
+  def populateGSheet(self, paramDict):
     # 27/3/23 DH: Now add the results of the errors to gsheet
     sheet = self.gspreadErrors.sheet
     self.gspreadErrors.updateSheet(sheet,2,9,"ooh yea...")
     self.gspreadErrors.addRow(sheet, dense=self.dense1, dropout=self.dropout1, 
                               training_num=self.trainingNum, test_num=self.imgNum, errors=self.iCnt)
+    # 31/3/23 DH: Add "=average()" in appropriate G row for last row of a DNN build
+
     self.gspreadErrors.getGSheetsData(sheet)
+
+  # 1/4/23 DH:
+  def batchRunAshore(self, paramDictList):
+    for paramDict in paramDictList:
+      for run in range(paramDict['runs']):
+        self.build(paramDict)
+
+        for rerun in range(paramDict['reruns']):
+          self.run()
+          self.populateGSheet(paramDict)
+
 
 # =============================================================================================
 
 # 30/3/23 DH:
 if __name__ == '__main__':
   tfCfg = TFConfig()
-  tfCfg.build()
-  tfCfg.run()
-  tfCfg.populateGSheet()
+
+  # 1/4/23 DH: List of dicts for DNN params
+  paramDictList = [
+    {'dense1': 784, 'dropout1': None, 'trainingNum': x_train.shape[0], 'runs': 1, 'reruns': 1 },
+    ]
+
+  tfCfg.batchRunAshore(paramDictList)
