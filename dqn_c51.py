@@ -4,89 +4,40 @@
 #
 ####################################################################################
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import base64
-import imageio
-#import IPython
-import matplotlib
-import matplotlib.pyplot as plt
-
-#import PIL.Image
-# 5/4/23 DH: 
-from PIL import Image, ImageFont, ImageDraw 
-import numpy
-import pandas as pd
-import math
-
-import pyvirtualdisplay
-
+# 10/4/23 DH: Refactor of tf_agents test suite
 import tensorflow as tf
-
-from tf_agents.agents.categorical_dqn import categorical_dqn_agent
-from tf_agents.drivers import dynamic_step_driver
-from tf_agents.environments import suite_gym
-from tf_agents.environments import tf_py_environment
-from tf_agents.eval import metric_utils
-from tf_agents.metrics import tf_metrics
 from tf_agents.networks import categorical_q_network
-from tf_agents.policies import random_tf_policy
-from tf_agents.replay_buffers import tf_uniform_replay_buffer
-from tf_agents.trajectories import trajectory
+from tf_agents.agents.categorical_dqn import categorical_dqn_agent
 from tf_agents.utils import common
 
-# 4/4/23 DH: To run mpeg image
-import os
-
-# 10/4/23 DH: Refactor of tf_agents test suite
 from suite_gym_utils import *
 from gym_config import *
-import time
 
 # ------------------------------------------------------------------------------------------
 
-# 8/4/23 DH: https://gymnasium.farama.org/environments/classic_control/cart_pole/#rewards
-#            "The threshold for rewards is 475 for v1."
-env_name = "CartPole-v1" # @param {type:"string"}
-
-#num_iterations = 15000 # @param {type:"integer"}
-num_iterations = 2000
-
-initial_collect_steps = 1000  # @param {type:"integer"} 
-collect_steps_per_iteration = 1  # @param {type:"integer"}
-#replay_buffer_capacity = 100000  # @param {type:"integer"}
-# 9/4/23 DH:
-replay_buffer_capacity = 3
-
+num_atoms = 51
 fc_layer_params = (100,)
 
-batch_size = 64  # @param {type:"integer"}
-learning_rate = 1e-3  # @param {type:"number"}
+learning_rate = 1e-3
+
+min_q_value = -20
+max_q_value = 20
 gamma = 0.99
-log_interval = 200  # @param {type:"integer"}
 
-num_atoms = 51  # @param {type:"integer"}
-min_q_value = -20  # @param {type:"integer"}
-max_q_value = 20  # @param {type:"integer"}
-n_step_update = 2  # @param {type:"integer"}
-
-num_eval_episodes = 10  # @param {type:"integer"}
-eval_interval = 1000  # @param {type:"integer"}
+num_eval_episodes = 10
+collect_steps_per_iteration = 1
+log_interval = 200
+eval_interval = 1000
+#num_iterations = 15000
+num_iterations = 2000
 
 # ---------------------------------------------------------------
-# 10/4/23 DH: TODO: Add these to 'gym_config.py'
-"""
-train_py_env = suite_gym.load(env_name)
-eval_py_env = suite_gym.load(env_name)
 
-train_env = tf_py_environment.TFPyEnvironment(train_py_env)
-eval_env = tf_py_environment.TFPyEnvironment(eval_py_env)
-"""
+# 10/4/23 DH:
 initGym()
 
-# ======================= TF-Agents ========================
+# ==================================== TF-Agents ======================================
+
 categorical_q_net = categorical_q_network.CategoricalQNetwork(
     gym_config.train_env.observation_spec(),
     gym_config.train_env.action_spec(),
@@ -126,7 +77,6 @@ agent = categorical_dqn_agent.CategoricalDqnAgent(
 #print("agent.collect_policy: ",type(agent.collect_policy))
 #print("agent.collect_policy:",agent.collect_policy.collect_data_spec,"\n")
 
-# ==========================================================
 agent.initialize()
 
 # (Optional) Optimize by wrapping some of the code in a graph using TF function.
@@ -134,6 +84,7 @@ agent.train = common.function(agent.train)
 
 # Reset the train step
 agent.train_step_counter.assign(0)
+# =====================================================================================
 
 initReplayBuffer(agent, gym_config.train_env)
 

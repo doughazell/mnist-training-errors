@@ -53,7 +53,10 @@ cart underneath it
 gym_filename = 'imageio.mp4'
 gym_path = 'video'
 
+# 8/4/23 DH: https://gymnasium.farama.org/environments/classic_control/cart_pole/#rewards
+#            "The threshold for rewards is 475 for v1."
 env_name = "CartPole-v1"
+
 eval_interval = 1000
 num_iterations = 2000
 batch_size = 64
