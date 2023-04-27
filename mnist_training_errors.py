@@ -75,10 +75,13 @@ class TFConfig(object):
     self.probability_model = self.tfModel.getProbabilityModel(self.model)
     softmax2DList = self.probability_model(x_test).numpy()
 
+    self.runPartNum += 1
+    self.runPartNumbers[self.runPartNum] = self.iCnt
     self.imgNum = x_test.shape[0]
-    print("\n[Looping through",self.imgNum,"images from x_test]\n")
+    print("*************************************************************************")
+    print(self.runPartNum,") Looping through",self.imgNum,"images from x_test")
+    print("*************************************************************************\n")
     
-
     for elem in range(self.imgNum):
       predictedVal = np.argmax(softmax2DList[elem])
       if y_test[elem] != predictedVal:
@@ -124,6 +127,8 @@ class TFConfig(object):
 
       self.iCnt = 0
       self.errorNum = 0
+      self.runPartNum = 0
+      self.runPartNumbers = {}
 
       self.desiredIncrease = 0.05
       self.rlRunPart()
@@ -132,11 +137,22 @@ class TFConfig(object):
         self.rlRunPart()
 
       print("-----------")
-      print("Total errors: ",self.iCnt)
+      print("Total errors:",self.iCnt)
+      print("Run parts:",self.runPartNum)
+      
+      print(self.runPartNumbers)
+      subCnt = 0
+      for key in self.runPartNumbers.keys():
+        if key + 1 in self.runPartNumbers:
+          print(key,":",self.runPartNumbers[key + 1] - self.runPartNumbers[key])
+          subCnt = self.runPartNumbers[key + 1]
+        else:
+          subCnt = self.iCnt - subCnt
+          print(key,":",subCnt)
+
       print("Accuracy start:",self.startPercent)
       print("Accuracy end  :",self.accuracyPercent)
       print(self.accuracies)
-
 
   def run(self):
     # 16/1/23 DH: 'x_test' is a 3-D array of 10,000 28*28 images
