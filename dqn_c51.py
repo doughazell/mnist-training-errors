@@ -25,9 +25,13 @@ max_q_value = 20
 gamma = 0.99
 
 num_eval_episodes = 10
-collect_steps_per_iteration = 1
+
+# 16/4/23 DH: Refactoring Google obfuscation...
+#collect_steps_per_iteration = 1
+
 log_interval = 200
 eval_interval = 1000
+
 #num_iterations = 15000
 num_iterations = 2000
 
@@ -109,15 +113,25 @@ dirNum = None
 # 8/4/23 DH: num_iterations = 15000
 for iterNum in range(num_iterations):
 
-  # Collect a few steps using collect_policy and save to the replay buffer.
-  # 8/4/23 DH: 'collect_steps_per_iteration = 1'...so for, "a few steps", read one...!
-  #
   # 8/4/23 DH: https://www.tensorflow.org/agents/api_docs/python/tf_agents/agents/CategoricalDqnAgent#attributes
-  for _ in range(collect_steps_per_iteration):
-    # 8/4/23 DH: EpsilonGreedyPolicy (see above for CategoricalDqnAgent github code)
-    #
-    # Add trajectory to the replay buffer (which gets accessed via dataset+iterator)
-    collect_step(gym_config.train_env, agent.collect_policy)
+
+  # 8/4/23 DH: EpsilonGreedyPolicy (see above for CategoricalDqnAgent github code)
+  #
+  # Add trajectory to the replay buffer (which gets accessed via dataset+iterator)
+  collect_step(gym_config.train_env, agent.collect_policy)
+
+  ########################################################################################################
+  # 12/4/23 DH:
+  # 1 - Put next action Trajectory (from state + policy) of Train Env in Replay Buffer
+  # 2 - Get it out of Replay Buffer
+  # 3 - Train the agent based on Trajectory:
+  #     {'step_type', 'observation', 'action', 'policy_info', 'next_step_type', 'reward', 'discount'}
+  #
+  #     https://github.com/tensorflow/agents/blob/master/tf_agents/agents/dqn/dqn_agent.py#L391
+  #     https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/training/optimizer.py#L621
+  #
+  # [Repeat for specified iterations]
+  ########################################################################################################
 
   # Sample a batch of data from the buffer (prev from random policy) and update the agent's network.
   experience, unused_info = next(iterator)

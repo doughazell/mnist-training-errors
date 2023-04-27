@@ -11,7 +11,7 @@ class TFModel(object):
     print("-------------------------------------")
 
   # 27/3/23 DH:
-  def createModel(self, dense1, dropout1, x_trainSet, y_trainSet):
+  def createTrainedModel(self, dense1, dropout1, x_trainSet, y_trainSet, epochs):
     # 15/3/23 DH: https://www.kirenz.com/post/2022-06-17-introduction-to-tensorflow-and-the-keras-functional-api/
     #   "The Keras sequential model is easy to use, but its applicability is extremely limited: 
     #    it can only express models with a single input and a single output, 
@@ -31,23 +31,25 @@ class TFModel(object):
     #             https://en.wikipedia.org/wiki/Convolutional_neural_network
     # ...hence the 'dropout' (which in my tests made things worse for black lines on white background...!)
     model = tf.keras.models.Sequential([
-      tf.keras.layers.Flatten(input_shape=(28, 28)),
+      tf.keras.layers.Flatten(input_shape=(28, 28))
+    ])
 
-      #tf.keras.layers.Dense(128, activation='relu'),      
-      tf.keras.layers.Dense(dense1, activation='relu'),
+    if dense1 is not None:
+      #tf.keras.layers.Dense(128, activation='relu'),
+      model.add(tf.keras.layers.Dense(dense1, activation='relu'))
 
+    if dropout1 is not None:
       # 18/3/23 DH: https://keras.io/api/layers/regularization_layers/dropout/
       #   "Dropout layer randomly sets input units to 0 with freq of rate at each step during training time, 
       #    which helps PREVENT OVERFITTING. (ie fuzzy logic) 
       #    Inputs not set to 0 are SCALED UP by 1/(1 - rate) such that SUM over all inputs is UNCHANGED"
 
-      #tf.keras.layers.Dropout(0.2),      
-      #tf.keras.layers.Dropout(dropout1),
+      #tf.keras.layers.Dropout(0.2),
+      model.add(tf.keras.layers.Dropout(dropout1))
 
-      # 16/3/23 DH: Condense to decimal digit bucket set
-      tf.keras.layers.Dense(10)
-    ])
-      
+    # 16/3/23 DH: Condense to decimal digit bucket set
+    model.add(tf.keras.layers.Dense(10))
+    
     loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
     model.compile(optimizer='adam',
@@ -57,10 +59,13 @@ class TFModel(object):
     print("\n--- model.fit() ---")
     print("Using x_train + y_train (%i): "%(x_trainSet.shape[0]))
     #model.fit(x_train, y_train, epochs=5)
-    model.fit(x_trainSet, y_trainSet, epochs=5)
+    model.fit(x_trainSet, y_trainSet, epochs=epochs)
 
     #print("Using x_test + y_test (%i): "%(x_test.shape[0]))
     #model.fit(x_test, y_test, epochs=1)
+
+    # 24/4/23 DH:
+    model.summary()
 
     self.model = model
     return model
@@ -72,7 +77,7 @@ class TFModel(object):
       # model doesn't exist, build it...
 
       # 28/3/23 DH:
-      model = self.createModel(dense1=128, dropout1=0.2, x_trainSet=self.x_train, y_trainSet=self.y_train)
+      model = self.createTrainedModel(dense1=128, dropout1=0.2, x_trainSet=self.x_train, y_trainSet=self.y_train)
 
       # 23/1/23 DH: https://www.tensorflow.org/guide/keras/save_and_serialize
       model.save("mnist_training_errors")

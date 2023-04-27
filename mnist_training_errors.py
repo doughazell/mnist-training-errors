@@ -29,29 +29,125 @@ class TFConfig(object):
     plt.draw()
     plt.waitforbuttonpress(timeout=1)
 
-  def modelEval(self):
-    print("\n--- model.evaluate() ---")
-    print("Using x_train + y_train (%i): "%(x_train.shape[0]))
-    self.tfModel.model.evaluate(x_train,  y_train, verbose=2)
-    print("***")
+  def modelEval(self,start=False):
+    print("--- model.evaluate() ---")
+    
+    #print("Using x_train + y_train (%i): "%(x_train.shape[0]))
+    #self.tfModel.model.evaluate(x_train,  y_train, verbose=2)
+    #print("***")
+    
     print("Using x_test + y_test (%i): "%(x_test.shape[0]))
-    self.tfModel.model.evaluate(x_test,  y_test, verbose=2)
+    evalRes = self.tfModel.model.evaluate(x_test,  y_test, verbose=2)
+    accuracyPercent = "{:.2f}".format(evalRes[1])
+    print("evaluate() accuracy:",accuracyPercent)
+    print("------------------------\n")
+
+    if start == True:
+      self.startPercent = accuracyPercent
+      self.accuracies = []
+
+    if hasattr(self, 'accuracies'):
+      self.accuracies.append(accuracyPercent)
+
+    return accuracyPercent
 
   def build(self, paramDict):
     self.dense1 = paramDict['dense1']
     self.dropout1 = paramDict['dropout1']
     self.trainingNum = paramDict['trainingNum']
+    # 24/4/23 DH:
+    self.x_trainSet = paramDict['x_trainSet']
+    self.y_trainSet = paramDict['y_trainSet']
+    # 23/4/23 DH:
+    self.epochs = paramDict['epochs']
 
-    model = self.tfModel.createModel(dense1=self.dense1, dropout1=self.dropout1, 
-                                    x_trainSet=x_train, y_trainSet=y_train)
-    self.modelEval()
-    self.probability_model = self.tfModel.getProbabilityModel(model)
+    #print("x_train:",type(self.x_trainSet),self.x_trainSet.shape )
+    #print("y_train:",type(self.y_trainSet),self.y_trainSet.shape )
+
+    self.model = self.tfModel.createTrainedModel(dense1=self.dense1, dropout1=self.dropout1,
+                                            x_trainSet=self.x_trainSet, y_trainSet=self.y_trainSet, 
+                                            epochs=self.epochs)
+    self.modelEval(start=True)
     
+  # 27/4/23 DH:
+  def rlRunPart(self):
+    # 23/4/23 DH: Get trained NN (wrapped with softmax layer)
+    self.probability_model = self.tfModel.getProbabilityModel(self.model)
+    softmax2DList = self.probability_model(x_test).numpy()
+
+    self.imgNum = x_test.shape[0]
+    print("\n[Looping through",self.imgNum,"images from x_test]\n")
+    
+
+    for elem in range(self.imgNum):
+      predictedVal = np.argmax(softmax2DList[elem])
+      if y_test[elem] != predictedVal:
+        self.iCnt += 1
+
+        # 22/4/23 DH: Send 'x_test[elem]' to 'bitwiseAndDefinitive()' to get self checking update
+        # (...which in this case is a little REDUNDANT since 'y_test[elem]' is the answer we need...!)
+
+        # 26/4/23 DH: Adding 'class weights' didn't help (prob due to overriding TF algorithms)
+        classWeightDict = {0:1, 1:1, 2:1, 3:1, 4:1, 5:1, 6:1, 7:1, 8:1, 9:1}
+        classWeightDict[ y_test[elem] ] = 2
+
+        x_test_elemArray = np.array([x_test[elem]])
+        y_test_elemArray = np.array([y_test[elem]])
+
+        #print("x_test[elem]:",type(x_test_elemArray),x_test_elemArray.shape )
+        #print("y_test[elem]:",type(y_test_elemArray),y_test_elemArray.shape )
+        print("Predicted value:",predictedVal,", Expected value:",y_test[elem])
+
+        # 26/4/23 DH: 'train_on_batch' resulted in "tensor 'Placeholder/_1' value" error
+        self.tfModel.model.fit(x=x_test_elemArray, y=y_test_elemArray)
+
+        self.accuracyPercent = self.modelEval()
+
+      if self.errorNum != self.iCnt and self.iCnt % 100 == 0:
+        print("####################################################################")
+        print(self.iCnt, "errors at element",elem)
+        print("####################################################################")
+        print()
+        self.errorNum = self.iCnt
+
+      # 27/4/23 DH: Get an updated 'softmax2DList' after a 10% increase in accuracy
+      if hasattr(self, 'accuracyPercent') and float(self.accuracyPercent) > float(self.startPercent) + self.desiredIncrease:
+        break
+    # END: 'for elem in range(self.imgNum)'
+
+  # 24/4/23 DH:
+  def rlRun(self, paramDictList):
+    
+    for paramDict in paramDictList:
+
+      self.build(paramDict)
+
+      self.iCnt = 0
+      self.errorNum = 0
+
+      self.desiredIncrease = 0.05
+      self.rlRunPart()
+      while float(self.accuracyPercent) < 0.60:
+        self.desiredIncrease += 0.05
+        self.rlRunPart()
+
+      print("-----------")
+      print("Total errors: ",self.iCnt)
+      print("Accuracy start:",self.startPercent)
+      print("Accuracy end  :",self.accuracyPercent)
+      print(self.accuracies)
+
+
   def run(self):
     # 16/1/23 DH: 'x_test' is a 3-D array of 10,000 28*28 images
     self.imgNum = x_test.shape[0]
     f = open("predicted-errors.txt", "w")
 
+    # 23/4/23 DH: Get trained NN (wrapped with softmax layer)
+    self.probability_model = self.tfModel.getProbabilityModel(self.model)
+
+    # 22/4/23 DH: Add ALL TEST DATA to trained model (wrapped with softmax layer)
+    # (to update the predicted output from flattened image will prob require disappearing into TensorFlow...)
     softmax2DList = self.probability_model(x_test).numpy()
     softmaxList = softmax2DList[0]
     print("\nSoftmax list for element 0 of 'x_test': ",softmaxList )
@@ -61,6 +157,7 @@ class TFConfig(object):
     errorNum = 0
 
     for elem in range(self.imgNum):
+      # 25/4/23 DH: https://www.tensorflow.org/api_docs/python/tf/keras/Model#predict
       predictedVal = np.argmax(softmax2DList[elem])
       if y_test[elem] != predictedVal:
         f.write("Dataset Element: "+ str(elem) + " Expected: "+ str(y_test[elem]) + " Predicted: " + str(predictedVal) + "\n")
@@ -84,9 +181,10 @@ class TFConfig(object):
   def populateGSheet(self, paramDict):
     # 27/3/23 DH: Now add the results of the errors to gsheet
     sheet = self.gspreadErrors.sheet
-    self.gspreadErrors.updateSheet(sheet,2,9,"ooh yea...")
+    self.gspreadErrors.updateSheet(sheet,2,10,"ooh yea...")
     self.gspreadErrors.addRow(sheet, dense=self.dense1, dropout=self.dropout1, 
-                              training_num=self.trainingNum, test_num=self.imgNum, errors=self.iCnt)
+                              training_num=self.trainingNum, test_num=self.imgNum, 
+                              epochs=self.epochs, errors=self.iCnt)
     # 31/3/23 DH: Add "=average()" in appropriate G row for last row of a DNN build
 
     self.gspreadErrors.getGSheetsData(sheet)
@@ -108,9 +206,21 @@ class TFConfig(object):
 if __name__ == '__main__':
   tfCfg = TFConfig()
 
+  # 24/4/23 DH:
+  x_trainSet = x_train[:700]
+  y_trainSet = y_train[:700]
+  #x_trainSet = x_train
+  #y_trainSet = y_train
+
   # 1/4/23 DH: List of dicts for DNN params
   paramDictList = [
-    {'dense1': 784, 'dropout1': None, 'trainingNum': x_train.shape[0], 'runs': 1, 'reruns': 1 },
+    #{'dense1': 784, 'dropout1': None, 'trainingNum': x_train.shape[0], 'epochs': 5, 'runs': 1, 'reruns': 1 },
+    
+    {'dense1': 20, 'dropout1': None, 'epochs': 1, 'x_trainSet': x_trainSet, 'y_trainSet': y_trainSet,
+     'trainingNum': x_trainSet.shape[0], 'runs': 1, 'reruns': 1 },
     ]
 
-  tfCfg.batchRunAshore(paramDictList)
+  #tfCfg.batchRunAshore(paramDictList)
+
+  # 24/4/23 DH:
+  tfCfg.rlRun(paramDictList)

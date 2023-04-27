@@ -11,7 +11,7 @@ class GSpreadErrors(object):
 
   #def __new__(self) -> gspread.Spreadsheet:
   #  return sheet
-  
+
   def __init__(self) -> None:
     try:
       # 2/11/17 DH: use creds to create a client to interact with the Google Drive API
@@ -29,7 +29,7 @@ class GSpreadErrors(object):
       #print('Opening \'Addresses:Personal\'...')
       #sheet = client.open("Addresses").worksheet("Personal")
 
-      # 21/3/23 DH:
+      # 21/3/23 DH: https://docs.google.com/spreadsheets/d/11tdSmNDpvY1ATQLZvHXmJ2yi_44a94EwzUmTUUkRg1s/edit#gid=1970711433
       print('Opening \'Addresses:mnist-errors\'...')
       self.sheet = client.open("Addresses").worksheet("mnist-errors")
     
@@ -168,7 +168,8 @@ class GSpreadErrors(object):
         print(respStr)
 
   # 25/3/23 DH:
-  def addRow(self, sheet, dense, dropout, training_num, test_num, errors):
+  # 1/4/23 DH: Needs to a refactor to dynamically add columns to row using a dict
+  def addRow(self, sheet, dense, dropout, training_num, test_num, epochs, errors):
     try:
       newrow = []
       
@@ -183,6 +184,11 @@ class GSpreadErrors(object):
       newrow.append(training_num)
       newrow.append(test_num)
       newrow.append(errors)
+      
+      # 23/4/23 DH:
+      newrow.append(epochs)
+
+      # 19/4/23 DH: Add 'average' + 'rerun' columns (see 'TFConfig.populateGSheet()' )
 
       sheet.append_row(newrow, table_range='A:F')
     except Exception as error:

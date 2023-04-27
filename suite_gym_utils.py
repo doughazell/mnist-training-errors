@@ -71,6 +71,13 @@ def initGym():
   gym_config.train_env = tf_py_environment.TFPyEnvironment(gym_config.train_py_env)
   gym_config.eval_env = tf_py_environment.TFPyEnvironment(gym_config.eval_py_env)
 
+# 11/4/23 DH: https://www.tensorflow.org/agents/api_docs/python/tf_agents/replay_buffers/ReverbReplayBuffer#some_additional_notes
+#             ReverbReplayBuffer (from '1_dqn_tutorial.ipynb') vs TFUniformReplayBuffer
+#
+#             https://github.com/tensorflow/agents/tree/master/tf_agents/replay_buffers
+#             https://github.com/deepmind/reverb :
+# "an experience replay system for distributed reinforcement learning algorithms"
+# "Reverb currently only supports Linux based OSes."
 def initReplayBuffer(agent, train_env):
   random_policy = random_tf_policy.RandomTFPolicy(train_env.time_step_spec(),
                                                 train_env.action_spec())
@@ -130,6 +137,7 @@ def collect_step(environment, policy):
   traj = trajectory.from_transition(time_step, action_step, next_time_step)
 
   # Add trajectory to the replay buffer
+  # 12/4/23 DH: https://github.com/tensorflow/agents/blob/master/tf_agents/trajectories/trajectory.py
   gym_config.replay_buffer.add_batch(traj)
 
 # 7/4/23 DH:
