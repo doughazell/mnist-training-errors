@@ -44,6 +44,8 @@ class TFConfig(object):
 
     if start == True:
       self.startPercent = accuracyPercent
+      # 28/4/23 DH: Lowest percent gets lowered as appropriate during the retraining
+      self.lowestPercent = accuracyPercent
       self.accuracies = []
 
     if hasattr(self, 'accuracies'):
@@ -68,7 +70,32 @@ class TFConfig(object):
                                             x_trainSet=self.x_trainSet, y_trainSet=self.y_trainSet, 
                                             epochs=self.epochs)
     self.modelEval(start=True)
-    
+  
+  # 28/4/23 DH:
+  def checkBreakout(self):
+    # 27/4/23 DH: Get an updated 'softmax2DList' after a specified '% increase' in accuracy
+    if hasattr(self, 'accuracyPercent'):
+      # 28/4/23 DH:
+      if float(self.lowestPercent) > float(self.accuracyPercent):
+        self.lowestPercent = self.accuracyPercent
+
+      partDict = self.runPartNumbers[self.runPartNum]
+
+      if float(partDict['lowestPercent']) > float(self.accuracyPercent):
+        partDict['lowestPercent'] = self.accuracyPercent
+      
+      if float(partDict['highestPercent']) < float(self.accuracyPercent):
+        partDict['highestPercent'] = self.accuracyPercent
+
+      # 28/4/23 DH:
+      if float(self.accuracyPercent) > float(self.startPercent) + self.desiredIncrease:
+        partDict['endPercent'] = self.accuracyPercent
+        return True
+      
+    # END: ------------- 'if hasattr(self, 'accuracyPercent')' ---------------
+
+    return False
+
   # 27/4/23 DH:
   def rlRunPart(self):
     # 23/4/23 DH: Get trained NN (wrapped with softmax layer)
@@ -76,7 +103,18 @@ class TFConfig(object):
     softmax2DList = self.probability_model(x_test).numpy()
 
     self.runPartNum += 1
-    self.runPartNumbers[self.runPartNum] = self.iCnt
+    
+    """
+    # 28/4/23 DH: Now each part is a dictionary (within the 'runPartNumbers' dictionary):
+      startPercent (DONE)
+      endPercent (DONE)
+      lowestPercent (DONE)
+      highestPercent (DONE)
+
+      partStartCnt (DONE)
+    """
+    self.runPartNumbers[self.runPartNum] = {'partStartCnt': self.iCnt}
+
     self.imgNum = x_test.shape[0]
     print("*************************************************************************")
     print(self.runPartNum,") Looping through",self.imgNum,"images from x_test")
@@ -105,6 +143,16 @@ class TFConfig(object):
         self.tfModel.model.fit(x=x_test_elemArray, y=y_test_elemArray)
 
         self.accuracyPercent = self.modelEval()
+        if not 'startPercent' in self.runPartNumbers[self.runPartNum]:
+          print("Adding startPercent ", self.accuracyPercent,"to part",self.runPartNum,"\n")
+          self.runPartNumbers[self.runPartNum]['startPercent'] = self.accuracyPercent
+          self.runPartNumbers[self.runPartNum]['lowestPercent'] = self.accuracyPercent
+          self.runPartNumbers[self.runPartNum]['highestPercent'] = self.accuracyPercent
+
+        if self.checkBreakout():
+          break
+
+      # END: ------------- 'if y_test[elem] != predictedVal' --------------
 
       if self.errorNum != self.iCnt and self.iCnt % 100 == 0:
         print("####################################################################")
@@ -113,10 +161,37 @@ class TFConfig(object):
         print()
         self.errorNum = self.iCnt
 
-      # 27/4/23 DH: Get an updated 'softmax2DList' after a 10% increase in accuracy
-      if hasattr(self, 'accuracyPercent') and float(self.accuracyPercent) > float(self.startPercent) + self.desiredIncrease:
-        break
-    # END: 'for elem in range(self.imgNum)'
+    # END: ------------- 'for elem in range(self.imgNum)' -------------
+  
+  # 28/4/23 DH:
+  def printPartStats(self):
+    # 28/4/23 DH: Added in for stats debug
+    for key in self.runPartNumbers.keys():
+      print(key,":",self.runPartNumbers[key])
+    print()
+
+    subCnt = 0
+
+    for key in self.runPartNumbers.keys():
+      # 28/4/23 DH: Print part count (counts recorded at start for each part, not num in part)
+      currentPart = self.runPartNumbers[key]
+      if key + 1 in self.runPartNumbers:
+
+        nextPart = self.runPartNumbers[key + 1]
+        subCnt = nextPart['partStartCnt']
+
+        partCnt = nextPart['partStartCnt'] - currentPart['partStartCnt']
+        print(key,":",partCnt)
+      else:
+        subCnt = self.iCnt - subCnt
+        print(key,":",subCnt)
+
+      # 28/4/23 DH: Other metrics for part
+      start = currentPart['startPercent']
+      end = currentPart['endPercent']
+      low = currentPart['lowestPercent']
+      high = currentPart['highestPercent']
+      print("  : (start:",start,", end:",end,", lowest:",low,", highest:",high,")")
 
   # 24/4/23 DH:
   def rlRun(self, paramDictList):
@@ -128,30 +203,24 @@ class TFConfig(object):
       self.iCnt = 0
       self.errorNum = 0
       self.runPartNum = 0
+      # 28/4/23 DH: Now a dictionary of dictionaries
       self.runPartNumbers = {}
 
       self.desiredIncrease = 0.05
       self.rlRunPart()
-      while float(self.accuracyPercent) < 0.60:
+      while float(self.accuracyPercent) < 0.55:
         self.desiredIncrease += 0.05
         self.rlRunPart()
 
       print("-----------")
       print("Total errors:",self.iCnt)
       print("Run parts:",self.runPartNum)
-      
-      print(self.runPartNumbers)
-      subCnt = 0
-      for key in self.runPartNumbers.keys():
-        if key + 1 in self.runPartNumbers:
-          print(key,":",self.runPartNumbers[key + 1] - self.runPartNumbers[key])
-          subCnt = self.runPartNumbers[key + 1]
-        else:
-          subCnt = self.iCnt - subCnt
-          print(key,":",subCnt)
-
-      print("Accuracy start:",self.startPercent)
-      print("Accuracy end  :",self.accuracyPercent)
+      print("Accuracy start :",self.startPercent)
+      print("Accuracy end   :",self.accuracyPercent)
+      print("Lowest accuracy:",self.lowestPercent)
+      print()
+      self.printPartStats()
+      print()
       print(self.accuracies)
 
   def run(self):
