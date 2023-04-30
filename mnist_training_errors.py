@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 # 30/3/23 DH: Refactor of model creation + DB model access
 from tf_model import *
 from gspread_errors import *
+# 30/4/23 DH: Refactor of GSpreadErrors class
+from gspread_rl import *
+from gspread_rl_parts import *
 
 """
 Load and prepare the [MNIST dataset](http://yann.lecun.com/exdb/mnist/). 
@@ -20,9 +23,9 @@ class TFConfig(object):
   def __init__(self) -> None:
     self.tfModel = TFModel()
     self.gspreadErrors = GSpreadErrors(spreadsheet="Addresses",sheet="mnist-errors")
-    # 29/4/23 DH: Needs a refactor to base + child classes...!!!
-    self.gspreadRL = GSpreadErrors(spreadsheet="Addresses",sheet="mnist-rl")
-    self.gspreadRLparts = GSpreadErrors(spreadsheet="Addresses",sheet="mnist-rl-parts")
+    # 30/4/23 DH: Refactor GSpreadErrors class
+    self.gspreadRL = GSpreadRL(spreadsheet="Addresses",sheet="mnist-rl")
+    self.gspreadRLparts = GSpreadRLparts(spreadsheet="Addresses",sheet="mnist-rl-parts")
 
   def displayImg(self,elem):
     # https://matplotlib.org/3.5.3/api/_as_gen/matplotlib.pyplot.html
@@ -242,7 +245,7 @@ class TFConfig(object):
       # Date,Test number,Part number,Count,Start,End,Lowest,Highest
 
       dateOfEntry = self.gspreadRL.dateOfEntry
-      testnum = self.gspreadRLq.testnum
+      testnum = self.gspreadRL.testnum
       
       self.gspreadRLparts.addRowRLparts(sheet, entry_date=dateOfEntry, test_num=testnum, part_num=self.key,
         count=partCnt, start=partStart, end=partEnd, lowest=partLow, highest=partHigh)                 
