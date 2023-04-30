@@ -19,7 +19,10 @@ class TFConfig(object):
 
   def __init__(self) -> None:
     self.tfModel = TFModel()
-    self.gspreadErrors = GSpreadErrors()
+    self.gspreadErrors = GSpreadErrors(spreadsheet="Addresses",sheet="mnist-errors")
+    # 29/4/23 DH: Needs a refactor to base + child classes...!!!
+    self.gspreadRL = GSpreadErrors(spreadsheet="Addresses",sheet="mnist-rl")
+    self.gspreadRLparts = GSpreadErrors(spreadsheet="Addresses",sheet="mnist-rl-parts")
 
   def displayImg(self,elem):
     # https://matplotlib.org/3.5.3/api/_as_gen/matplotlib.pyplot.html
@@ -163,6 +166,24 @@ class TFConfig(object):
 
     # END: ------------- 'for elem in range(self.imgNum)' -------------
   
+  # 29/4/23 DH:
+  def getPartCnt(self):
+    # 28/4/23 DH: Print part count (counts recorded at start for each part, not num in part)
+    partCnt = 0
+    currentPart = self.runPartNumbers[self.key]
+
+    if self.key + 1 in self.runPartNumbers:
+
+      nextPart = self.runPartNumbers[self.key + 1]
+      self.subCnt = nextPart['partStartCnt']
+
+      partCnt = nextPart['partStartCnt'] - currentPart['partStartCnt']
+    else:
+      self.subCnt = self.iCnt - self.subCnt
+      partCnt = self.subCnt
+    
+    return partCnt
+
   # 28/4/23 DH:
   def printPartStats(self):
     # 28/4/23 DH: Added in for stats debug
@@ -170,28 +191,77 @@ class TFConfig(object):
       print(key,":",self.runPartNumbers[key])
     print()
 
-    subCnt = 0
+    self.subCnt = 0
 
-    for key in self.runPartNumbers.keys():
-      # 28/4/23 DH: Print part count (counts recorded at start for each part, not num in part)
-      currentPart = self.runPartNumbers[key]
-      if key + 1 in self.runPartNumbers:
+    for self.key in self.runPartNumbers.keys():
 
-        nextPart = self.runPartNumbers[key + 1]
-        subCnt = nextPart['partStartCnt']
-
-        partCnt = nextPart['partStartCnt'] - currentPart['partStartCnt']
-        print(key,":",partCnt)
-      else:
-        subCnt = self.iCnt - subCnt
-        print(key,":",subCnt)
+      partCnt = self.getPartCnt()
+      print(self.key,":",partCnt)
 
       # 28/4/23 DH: Other metrics for part
+      currentPart = self.runPartNumbers[self.key]
+
       start = currentPart['startPercent']
       end = currentPart['endPercent']
       low = currentPart['lowestPercent']
       high = currentPart['highestPercent']
+
       print("  : (start:",start,", end:",end,", lowest:",low,", highest:",high,")")
+    # END: ------- 'for key in self.runPartNumbers.keys()' -------
+
+  # 29/4/23 DH:
+  def printStats(self):
+    print("-----------")
+    print("Total errors:",self.iCnt)
+    print("Run parts:",self.runPartNum)
+    print("Accuracy start :",self.startPercent)
+    print("Accuracy end   :",self.accuracyPercent)
+    print("Lowest accuracy:",self.lowestPercent)
+    print()
+    self.printPartStats()
+    print()
+    print(self.accuracies)
+
+  def populateGSheetRLparts(self):
+    sheet = self.gspreadRLparts.sheet
+    
+    self.subCnt = 0
+
+    for self.key in self.runPartNumbers.keys():
+
+      partCnt = self.getPartCnt()
+
+      # 28/4/23 DH: Other metrics for part
+      currentPart = self.runPartNumbers[self.key]
+      
+      partStart = currentPart['startPercent']
+      partEnd = currentPart['endPercent']
+      partLow = currentPart['lowestPercent']
+      partHigh = currentPart['highestPercent']
+
+      # Date,Test number,Part number,Count,Start,End,Lowest,Highest
+
+      dateOfEntry = self.gspreadRL.dateOfEntry
+      testnum = self.gspreadRLq.testnum
+      
+      self.gspreadRLparts.addRowRLparts(sheet, entry_date=dateOfEntry, test_num=testnum, part_num=self.key,
+        count=partCnt, start=partStart, end=partEnd, lowest=partLow, highest=partHigh)                 
+
+    # END: ------- 'for key in self.runPartNumbers.keys()' -------
+
+  # 29/4/23 DH:
+  def populateGSheetRL(self):
+    self.gspreadErrors.updateSheet(self.gspreadErrors.sheet, 2, 10, "ooh yea...")
+
+    sheet = self.gspreadRL.sheet
+    
+    self.gspreadRL.addRowRL(sheet, dense=self.dense1, dropout=self.dropout1, 
+      training_num=self.trainingNum, retrain_num=self.iCnt, run_parts=self.runPartNum,
+      accuracy_start=self.startPercent, accuracy_end=self.accuracyPercent, lowest_accuracy=self.lowestPercent)
+
+    self.populateGSheetRLparts()
+
+    self.gspreadRL.getGSheetsData(sheet)
 
   # 24/4/23 DH:
   def rlRun(self, paramDictList):
@@ -208,20 +278,13 @@ class TFConfig(object):
 
       self.desiredIncrease = 0.05
       self.rlRunPart()
-      while float(self.accuracyPercent) < 0.55:
+      while float(self.accuracyPercent) < 0.50:
         self.desiredIncrease += 0.05
         self.rlRunPart()
 
-      print("-----------")
-      print("Total errors:",self.iCnt)
-      print("Run parts:",self.runPartNum)
-      print("Accuracy start :",self.startPercent)
-      print("Accuracy end   :",self.accuracyPercent)
-      print("Lowest accuracy:",self.lowestPercent)
-      print()
-      self.printPartStats()
-      print()
-      print(self.accuracies)
+      self.printStats()
+      # 29/4/23 DH:
+      self.populateGSheetRL()
 
   def run(self):
     # 16/1/23 DH: 'x_test' is a 3-D array of 10,000 28*28 images
@@ -294,8 +357,8 @@ if __name__ == '__main__':
   # 24/4/23 DH:
   x_trainSet = x_train[:700]
   y_trainSet = y_train[:700]
-  #x_trainSet = x_train
-  #y_trainSet = y_train
+  #x_trainSet = x_train[:2000]
+  #y_trainSet = y_train[:2000]
 
   # 1/4/23 DH: List of dicts for DNN params
   paramDictList = [
@@ -304,6 +367,10 @@ if __name__ == '__main__':
     {'dense1': 20, 'dropout1': None, 'epochs': 1, 'x_trainSet': x_trainSet, 'y_trainSet': y_trainSet,
      'trainingNum': x_trainSet.shape[0], 'runs': 1, 'reruns': 1 },
     ]
+  
+  # 29/4/23 DH: Need cmd line arg:
+  #  train
+  #  rl
 
   #tfCfg.batchRunAshore(paramDictList)
 
