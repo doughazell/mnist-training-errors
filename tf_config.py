@@ -19,13 +19,6 @@ class TFConfig(object):
 
   def __init__(self) -> None:
     self.tfModel = TFModel()
-    #self.gspreadErrors = GSpreadErrors(spreadsheet="Addresses",sheet="mnist-errors")
-    # 30/4/23 DH: Refactor GSpreadErrors class
-    #self.gspreadRL = GSpreadRL(spreadsheet="Addresses",sheet="mnist-rl")
-    #self.gspreadRLparts = GSpreadRLparts(spreadsheet="Addresses",sheet="mnist-rl-parts")
-
-    #self.tfConfigTrain = TFConfigTrain()
-    #self.tfConfigRL = TFConfigRL()
 
   def displayImg(self,elem):
     # https://matplotlib.org/3.5.3/api/_as_gen/matplotlib.pyplot.html

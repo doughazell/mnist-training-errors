@@ -205,7 +205,13 @@ class TFConfigRL(TFConfig):
 
     self.populateGSheetRLparts()
 
-    self.gspreadRL.getGSheetsData(sheet)
+    # 1/5/23 DH: Overriden parent class 'getGSheetsData()' in 'GSpreadRL'
+    #self.gspreadRL.getGSheetsData(sheet)
+    # 1/5/23 DH: Access parent class 'getGSheetsData()'
+    #super(type(self.gspreadRL), self.gspreadRL).getGSheetsData(sheet)
+
+    print()
+    self.gspreadRL.getGSheetsDataRL(sheet, self.gspreadRLparts)
 
   # 24/4/23 DH:
   def rlRun(self, paramDictList):

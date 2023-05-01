@@ -1,5 +1,3 @@
-import matplotlib.pyplot as plt
-
 # 30/4/23 DH: Refactor of TFConfig class
 from tf_config_train import *
 from tf_config_rl import *
@@ -18,8 +16,7 @@ x_train, x_test = x_train / 255.0, x_test / 255.0
 class MNISTerrors(object):
 
   def __init__(self) -> None:
-    self.tfModel = TFModel()
-
+    
     self.tfConfigTrain = TFConfigTrain()
     self.tfConfigRL = TFConfigRL(self.tfConfigTrain)
 
