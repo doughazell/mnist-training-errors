@@ -7,6 +7,9 @@ from tf_config_rl import *
 # 2/5/23 DH:
 import click
 
+# 2/5/23 DH:
+from dqn_c51 import *
+
 """
 Load and prepare the [MNIST dataset](http://yann.lecun.com/exdb/mnist/). 
 Convert the sample data from integers to floating-point numbers 
@@ -31,6 +34,7 @@ class MNISTerrors(object):
 #  cartpole
 
 @click.group(invoke_without_command=True)
+
 @click.pass_context
 def cli(ctx):
   if not ctx.invoked_subcommand:
@@ -85,6 +89,10 @@ def rl():
 @cli.command()
 def cartpole():
   click.echo('\nTrain the TF DNN via Cartpole')
+
+  dqn = DQNc51()
+  dqn.trainCartPole()
+  dqn.displayResults()
 
 # 30/3/23 DH:
 if __name__ == '__main__':
