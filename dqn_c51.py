@@ -166,8 +166,8 @@ class DQNc51(object):
         #print("TRAIN replay_buffer:",replayBufSize )
         #print("agent.train_step_counter:",step,", iteration:",iterNum+1)
 
-      if step % eval_interval == 0:
-        # 8/4/23 DH: num_eval_episodes = 10
+      if step % self.eval_interval == 0:
+        # 4/5/23 DH: 'self.num_eval_episodes = 10' to calc average steps in eval gym for current policy
         avg_return = compute_avg_return(gym_config.eval_env, self.agent.policy, self.num_eval_episodes)
         print('step = {0}: Average Return = {1:.2f}'.format(step, avg_return))
         self.returns.append(avg_return)

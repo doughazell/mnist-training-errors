@@ -1,5 +1,9 @@
 # mnist-training-errors
-
+```
+  e_t<-
+ / /
+s_f
+```
 ### Introduction
 Sequential DNN Supervised Learning with TF is based on: www.tensorflow.org/tutorials/quickstart/beginner
 * Used in 'TFConfigTrain' to test training sets+epochs, DNN Layer config on digit recognition accuracy
@@ -8,6 +12,11 @@ Sequential DNN Supervised Learning with TF is based on: www.tensorflow.org/tutor
   (It is planned to check (and retrain if necessary) a proportion of predictions via bitwise-AND of image to example image for each digit)
 
 Categorical DQN Reinforcement Learning with TF is based on: https://github.com/tensorflow/agents/tree/master/docs/tutorials
+
+### CartPole training with Categorical DQN
+I changed the original tutorial video of multiple CartPole episodes at the end of training, to a one episode video every evaluation interval of 1000 training steps. This shows the increased time of a valid CartPole episode as the Categorical DQN is reinforcement trained.
+
+The videos are stored in 'video/[Incremented Integer]/' directory along with the graph of “average return” (ie average step number of 10 episodes for the agent in an “evaluation gym”) for each interval.
 
 ### Install steps
 ```
