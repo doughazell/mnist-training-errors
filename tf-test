@@ -121,6 +121,22 @@ def cartpole():
   dqn.trainCartPole()
   dqn.displayResults()
 
+# 5/5/23 DH:
+@cli.command()
+@click.argument('check',required=False)
+def mnist(check):
+  """
+  Get example of an image for each digit
+  """
+  click.echo("\nMNIST image file creation")
+  
+  tfCfg = TFConfig()
+
+  if check:
+    tfCfg.checkMNISTexamples()
+  else:
+    tfCfg.getMNISTexamples()
+
 # 30/3/23 DH:
 if __name__ == '__main__':
   
