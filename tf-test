@@ -124,16 +124,21 @@ def cartpole():
 # 5/5/23 DH:
 @cli.command()
 @click.argument('check',required=False)
-def mnist(check):
+@click.argument('digit',required=False)
+def mnist(check,digit):
   """
   Get example of an image for each digit
   """
-  click.echo("\nMNIST image file creation")
+  click.echo("\nMNIST image file creation/check")
   
   tfCfg = TFConfig()
 
   if check:
-    tfCfg.checkMNISTexamples()
+    if digit:
+      print(digit)
+      tfCfg.checkMNISTexamples(digit)
+    else:
+      tfCfg.checkMNISTexamples()
   else:
     tfCfg.getMNISTexamples()
 

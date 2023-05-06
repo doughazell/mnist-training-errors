@@ -6,6 +6,7 @@ from gspread_errors import *
 
 # 6/5/23 DH:
 import pickle
+import time
 
 """
 Load and prepare the [MNIST dataset](http://yann.lecun.com/exdb/mnist/). 
@@ -24,13 +25,36 @@ class TFConfig(object):
     self.tfModel = TFModel()
     self.mnistFilename = "digitDictionary.pkl"
 
-  def displayImg(self,imgDict,elem):
+  # 6/5/23 DH: 'self.digitDict' used to be single image per digit key (rather than a list)
+  def displayDictImg(self,imgDict,elem):
+    self.displayImg(imgDict[elem])
+
+  # 6/5/23 DH: If a key/mouse is pressed on an image then it goes into prune mode
+  def displayImgList(self,imgList):
+    newImgList = []
+
+    for index, img in enumerate(imgList):
+      notification = self.displayImg(img)
+
+      if notification is not None:
+        print(index)
+        newImgList.append(img)
+    
+    if len(newImgList) > 0:
+      return True, newImgList
+    
+    return False, imgList
+  
+  def displayImg(self,img):
     # https://matplotlib.org/3.5.3/api/_as_gen/matplotlib.pyplot.html
-    plt.imshow(imgDict[elem], cmap='gray_r')
+    plt.imshow(img, cmap='gray_r')
     
     # 22/1/23 DH: Calling function without '()' does not return an error but does NOT execute it (like function pointer)
     plt.draw()
-    plt.waitforbuttonpress(timeout=1)
+    retButtonPress = plt.waitforbuttonpress(timeout=1)
+    # 'True' if key press, 'False' if mouse press, 'None' if timeout
+    return retButtonPress
+    
 
   def modelEval(self,start=False):
     print("--- model.evaluate() ---")
@@ -85,7 +109,8 @@ class TFConfig(object):
   def getMNISTexamples(self):
     print("Getting MNIST examples...")
 
-    digitDict = {0:None, 1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None}
+    #digitDict = {0:None, 1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None}
+    self.digitDict = {0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[], 7:[], 8:[], 9:[]}
 
     imgs = x_test
     imgValues = y_test
@@ -96,37 +121,65 @@ class TFConfig(object):
     #print(digitDict.values())
 
     # 5/5/23 DH: Need to find way to select a good image for each digit 
-    #            (via a shortlist array for each digit which then gets selected during 'displayImg()')
+    #            (via a shortlist array for each digit which then gets selected in 'displayImgList()')
+    """
+    self.digitDict:
+      0 ..........
+      1 ..........
+      2 ..........
+      ...
+    """
     for elem in range(imgNum):
-      digitDict[imgValues[elem]] = imgs[elem]
+      #digitDict[imgValues[elem]] = imgs[elem]
+      self.digitDict[imgValues[elem]].append(imgs[elem])
       
-      if not any(x is None for x in digitDict.values()):
+      # 6/5/23 DH: Change this from 'not None' to a 'list of 10' per elem
+      #if not any(x is None for x in digitDict.values()):
+      if not any(len(list) < 10 for list in self.digitDict.values()):
         print("Got full set at", elem)
         break
     
-    for key in digitDict.keys():
-      """
-      if digitDict[key] is None:
-        print(key,":",digitDict[key])
-      else:
-        print(key,":",type(digitDict[key]))
-      """
-    
-      self.displayImg(digitDict, key)
+    self.pruneDigitDict(printOut=True)
 
-    # "pickle rick"...
+    # "pickle rick"...https://www.youtube.com/watch?v=_gRnvDRFYN4
     with open(self.mnistFilename, 'wb') as fp:
-      pickle.dump(digitDict, fp)
+      pickle.dump(self.digitDict, fp)
 
-  def checkMNISTexamples(self):
+    for key in self.digitDict.keys():
+      #self.displayDictImg(digitDict, key)
+      self.displayImgList(self.digitDict[key])
+
+  def pruneDigitDict(self, printOut=False):
+    for key in self.digitDict.keys():
+      if printOut:
+        print(key,":",len(self.digitDict[key]))
+      
+      # 6/5/23 DH: Now limit size to 10 elements
+      self.digitDict[key] = self.digitDict[key][:10]
+
+  def checkMNISTexamples(self, digit=None):
     print("Checking MNIST examples in", self.mnistFilename)
+    changed = False
 
     with open(self.mnistFilename, 'rb') as fp:
-      digitDict = pickle.load(fp)
+      self.digitDict = pickle.load(fp)
 
-    for key in digitDict.keys():
-      #print(key,":",type(digitDict[key]))
+    if digit:
+      #self.displayDictImg(digitDict, int(digit))
+      changed, self.digitDict[int(digit)] = self.displayImgList(self.digitDict[int(digit)])
 
-      self.displayImg(digitDict, key)
+    else:
+
+      for key in self.digitDict.keys():
+
+        #self.displayDictImg(digitDict, key)
+        chgFlag, self.digitDict[key] = self.displayImgList(self.digitDict[key])
+        
+        # Prevent mid list changes being forgotten for repickling
+        if chgFlag:
+          changed = True
     
-    
+    if changed:
+      print("List shortened so repickling")
+      with open(self.mnistFilename, 'wb') as fp:
+        pickle.dump(self.digitDict, fp)
