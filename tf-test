@@ -18,17 +18,6 @@ import click
 # 2/5/23 DH:
 from dqn_c51 import *
 
-"""
-Load and prepare the [MNIST dataset](http://yann.lecun.com/exdb/mnist/). 
-Convert the sample data from integers to floating-point numbers 
-("The training set contains 60000 examples, and the test set 10000 examples")
-"""
-# http://yann.lecun.com/exdb/mnist/
-mnist = tf.keras.datasets.mnist
-# https://www.tensorflow.org/api_docs/python/tf/keras/datasets/mnist/load_data()
-(x_train, y_train), (x_test, y_test) = mnist.load_data()
-x_train, x_test = x_train / 255.0, x_test / 255.0
-
 class MNISTerrors(object):
 
   def __init__(self) -> None:
@@ -141,6 +130,22 @@ def mnist(check,digit):
       tfCfg.checkMNISTexamples()
   else:
     tfCfg.getMNISTexamples()
+
+# 6/5/23 DH:
+@cli.command()
+@click.argument('convert',required=False)
+def bitwise(convert):
+  """
+  Test correlation of 'y_test[index]' with bitwise-AND
+  """
+  tfCfg = TFConfig()
+
+  if convert:
+    tfCfg.convertDigitDict()
+  else:
+    tfCfg.bitwiseAND()
+
+
 
 # 30/3/23 DH:
 if __name__ == '__main__':

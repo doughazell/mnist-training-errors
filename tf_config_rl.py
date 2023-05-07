@@ -5,6 +5,10 @@ from tf_config import *
 from gspread_rl import *
 from gspread_rl_parts import *
 
+# 7/5/23 DH:
+import signal
+import sys
+
 class TFConfigRL(TFConfig):
   def __init__(self, tfConfigTrain) -> None:
     
@@ -16,6 +20,9 @@ class TFConfigRL(TFConfig):
     self.gspreadRLparts = GSpreadRLparts(spreadsheet="Addresses",sheet="mnist-rl-parts")
 
     self.tfConfigTrain = tfConfigTrain
+
+    # 7/5/23 DH:
+    signal.signal(signal.SIGINT, self.signal_handler)
 
   # 28/4/23 DH:
   def checkBreakout(self):
@@ -68,6 +75,16 @@ class TFConfigRL(TFConfig):
     
     for elem in range(self.imgNum):
       predictedVal = np.argmax(softmax2DList[elem])
+      """
+      # 7/5/23 DH: TFConfig.bitwiseAND() shows that self checking via bitwise-AND with example image
+                   is only 25% accurate (7428/10000 errors).
+      
+      Demonstrates efficacy of TF
+      
+      1) 'y_test[elem]' not available for operational system, so need to try intermittent retrain 
+      with random small training sets (like agent CPD...)
+      2) Selective retrain failes after batch training to 50% accurate
+      """
       if y_test[elem] != predictedVal:
         self.iCnt += 1
 
@@ -145,7 +162,13 @@ class TFConfigRL(TFConfig):
       currentPart = self.runPartNumbers[self.key]
 
       start = currentPart['startPercent']
-      end = currentPart['endPercent']
+
+      # 7/5/23 DH: Needed for Ctrl-C interrupt handling
+      if 'endPercent' in currentPart: 
+        end = currentPart['endPercent']
+      else:
+        end = "XXX"
+      
       low = currentPart['lowestPercent']
       high = currentPart['highestPercent']
 
@@ -178,7 +201,13 @@ class TFConfigRL(TFConfig):
       currentPart = self.runPartNumbers[self.key]
       
       partStart = currentPart['startPercent']
-      partEnd = currentPart['endPercent']
+
+      # 7/5/23 DH: Needed for Ctrl-C interrupt handling
+      if 'endPercent' in currentPart:
+        partEnd = currentPart['endPercent']
+      else:
+        partEnd = "XXX"
+      
       partLow = currentPart['lowestPercent']
       partHigh = currentPart['highestPercent']
 
@@ -228,11 +257,21 @@ class TFConfigRL(TFConfig):
 
       self.desiredIncrease = 0.05
       self.rlRunPart()
-      while float(self.accuracyPercent) < 0.50:
+      while float(self.accuracyPercent) < 0.90:
         self.desiredIncrease += 0.05
         self.rlRunPart()
 
       self.printStats()
       # 29/4/23 DH:
       self.populateGSheetRL()
+  
+  # 7/5/23 DH: Handling interrupt when RL does not run to completion (due to Spaceport exception handling)
+  #            ...get the stats gained before stopping to coach a debrief.
+  def signal_handler(self, sig, frame):
+    print('\nYou pressed Ctrl+C so saving stats (to coach a debrief)...')
+    self.printStats()
+    self.populateGSheetRL()
+    
+    sys.exit(0)
+
   

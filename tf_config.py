@@ -7,23 +7,32 @@ from gspread_errors import *
 # 6/5/23 DH:
 import pickle
 import time
+import numpy
 
 """
 Load and prepare the [MNIST dataset](http://yann.lecun.com/exdb/mnist/). 
-Convert the sample data from integers to floating-point numbers 
+Convert the sample data from integers to floating-point numbers (WHY...???)
+
 ("The training set contains 60000 examples, and the test set 10000 examples")
 """
-# http://yann.lecun.com/exdb/mnist/
 mnist = tf.keras.datasets.mnist
 # https://www.tensorflow.org/api_docs/python/tf/keras/datasets/mnist/load_data()
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
+
+# 6/5/23 DH: WHY...????
+#  '$ tf-test train' appears to be more accurate for floats vs integers (5800 vs 7600 for 20Dense-700Train)
 x_train, x_test = x_train / 255.0, x_test / 255.0
 
 class TFConfig(object):
 
   def __init__(self) -> None:
     self.tfModel = TFModel()
+
     self.mnistFilename = "digitDictionary.pkl"
+    self.mnistFilenameINT = "digitDictionaryINTEGER.pkl"
+
+    with open(self.mnistFilenameINT, 'rb') as fp:
+      self.digitDict = pickle.load(fp)
 
   # 6/5/23 DH: 'self.digitDict' used to be single image per digit key (rather than a list)
   def displayDictImg(self,imgDict,elem):
@@ -45,13 +54,13 @@ class TFConfig(object):
     
     return False, imgList
   
-  def displayImg(self,img):
+  def displayImg(self,img, timeout=1):
     # https://matplotlib.org/3.5.3/api/_as_gen/matplotlib.pyplot.html
     plt.imshow(img, cmap='gray_r')
     
     # 22/1/23 DH: Calling function without '()' does not return an error but does NOT execute it (like function pointer)
     plt.draw()
-    retButtonPress = plt.waitforbuttonpress(timeout=1)
+    retButtonPress = plt.waitforbuttonpress(timeout=timeout)
     # 'True' if key press, 'False' if mouse press, 'None' if timeout
     return retButtonPress
     
@@ -161,9 +170,6 @@ class TFConfig(object):
     print("Checking MNIST examples in", self.mnistFilename)
     changed = False
 
-    with open(self.mnistFilename, 'rb') as fp:
-      self.digitDict = pickle.load(fp)
-
     if digit:
       #self.displayDictImg(digitDict, int(digit))
       changed, self.digitDict[int(digit)] = self.displayImgList(self.digitDict[int(digit)])
@@ -183,3 +189,136 @@ class TFConfig(object):
       print("List shortened so repickling")
       with open(self.mnistFilename, 'wb') as fp:
         pickle.dump(self.digitDict, fp)
+
+  # --------------------------------------------------------------------------------------------
+  # 7/5/23 DH: Test bitwise-AND with example images for reinforcement learning
+  # --------------------------------------------------------------------------------------------
+  def printZeroDigitArrayValues(self):
+    # Get the image for dictionary key '0'
+    testImg = self.digitDict[0][0]
+
+    print("Test img:",type(testImg), testImg.shape, type(testImg[0][0]))
+
+    xOffset = 15
+    y = 15
+    print(xOffset,",",y,"of",testImg.shape)
+    for xIdx in range(7):
+      xIdx += xOffset
+
+      # 6/5/23 DH: When remove "Convert the sample data from integers to floating-point numbers"
+      #            "{:.2f}" becomes "{:3}"
+      print("{:3}".format(testImg[xIdx][y]),
+            "{:3}".format(testImg[xIdx][y+1]),
+            "{:3}".format(testImg[xIdx][y+2]),
+            "{:3}".format(testImg[xIdx][y+3]),
+            "{:3}".format(testImg[xIdx][y+4]),
+            "{:3}".format(testImg[xIdx][y+5]),
+            "{:3}".format(testImg[xIdx][y+6]),
+            "{:3}".format(testImg[xIdx][y+7]))
+      
+      """
+      print(testImg[xIdx][y],
+            testImg[xIdx][y+1],
+            testImg[xIdx][y+2],
+            testImg[xIdx][y+3],
+            testImg[xIdx][y+4],
+            testImg[xIdx][y+5],
+            testImg[xIdx][y+6],
+            testImg[xIdx][y+7])
+      """
+      
+    print()
+
+  def getImgCheckTotals(self, img):
+    #totals = []
+    totalsDict = {}
+
+    for key in self.digitDict.keys():
+  
+      testImg = self.digitDict[key][0]
+
+      bitwiseAndRes = numpy.bitwise_and(testImg, img)
+      imgX, imgY = bitwiseAndRes.shape
+      #print("Shape:",imgX, imgY)
+
+      iTotal = 0
+      for x in range(imgX):
+        for y in range(imgY):
+          iTotal += bitwiseAndRes[x][y]
+
+      #print(key,"total:", iTotal)
+      #totals.append(iTotal)
+      totalsDict[key] = iTotal
+
+    return totalsDict
+  
+  def bitwiseAND(self):
+    print("Correlating 'y_test[index]' with return of highest bitwise-AND\n")
+
+    #self.printZeroDigitArrayValues()
+    
+    # 7/5/23 DH: 'x_test' is converted to float above (for NN accuracy reasons)
+    imgs = x_test
+    imgValues = y_test
+
+    imgNum = imgs.shape[0]
+    #imgNum = 2
+
+    totalsErrors = 0
+    errorNum = 0
+    for elem in range(imgNum):
+
+      # Convert image from float to integer array
+      img = imgs[elem]
+      img = img * 255
+      img = np.asarray(img, dtype = 'uint8')
+      
+      totalsDict = self.getImgCheckTotals(img)
+
+      totals = list(totalsDict.values())
+      digit = np.argmax(totals)
+
+      if int(digit) is not int(imgValues[elem]):
+        totalsErrors += 1
+        #self.displayImg(img, timeout=2)
+      
+      if totalsErrors < 3:
+        print("Check:", digit, "y_test:",imgValues[elem])
+        for k in sorted(totalsDict, key=totalsDict.get, reverse=True):
+          if k == imgValues[elem]:
+            print("*",k,"-",totalsDict[k])
+          else:
+            print(k,"-",totalsDict[k])
+        print()
+      """
+      else:
+        print("Breaking after 3 errors for debug")
+        break
+      """
+
+      if errorNum != totalsErrors and totalsErrors % 100 == 0:
+        print(totalsErrors, "errors at element",elem)
+        errorNum = totalsErrors
+
+    # ----- END: 'for elem in range(imgNum)' -----
+
+    print("Total errors:", totalsErrors)
+    
+  # 7/5/23 DH:
+  def convertDigitDict(self):
+    print("Converting example digits from float to integer")
+
+    for key in self.digitDict.keys():
+      # The example digits only contain 1 element per digit list
+      img = self.digitDict[key][0]
+
+      # 6/5/23 DH: Reverse the float conversion after 'mnist.load_data()'
+      img = img * 255
+      img = np.asarray(img, dtype = 'uint8')
+
+      self.digitDict[key][0] = img
+
+    with open(self.mnistFilenameINT, 'wb') as fp:
+        pickle.dump(self.digitDict, fp)
+  
+  # --------------------------------------------------------------------------------------------
