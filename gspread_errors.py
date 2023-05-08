@@ -169,7 +169,7 @@ class GSpreadErrors(object):
 
   # 25/3/23 DH:
   # 1/4/23 DH: Needs to a refactor to dynamically add columns to row using a dict
-  def addRow(self, sheet, dense, dropout, training_num, test_num, epochs, errors):
+  def addRow(self, sheet, dense, dropout, training_num, test_num, epochs, errors, misc):
     try:
       newrow = []
       
@@ -189,6 +189,12 @@ class GSpreadErrors(object):
       newrow.append(epochs)
 
       # 19/4/23 DH: Add 'average' + 'rerun' columns (see 'TFConfig.populateGSheet()' )
+      newrow.append("")
+      newrow.append("")
+
+      # 8/5/23 DH:
+      if misc:
+        newrow.append(misc)
 
       sheet.append_row(newrow, table_range='A:F')
     except Exception as error:

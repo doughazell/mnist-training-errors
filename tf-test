@@ -20,15 +20,10 @@ from dqn_c51 import *
 
 class MNISTerrors(object):
 
-  def __init__(self) -> None:
+  def __init__(self, integer=False) -> None:
     
-    self.tfConfigTrain = TFConfigTrain()
-    self.tfConfigRL = TFConfigRL(self.tfConfigTrain)
-
-# 2/5/23 DH: Add cmd line arg:
-#  train
-#  rl
-#  cartpole
+    self.tfConfigTrain = TFConfigTrain(integer=integer)
+    self.tfConfigRL = TFConfigRL(self.tfConfigTrain, integer=integer)
 
 # https://click.palletsprojects.com/en/8.1.x/commands/#group-invocation-without-command
 @click.group(invoke_without_command=True)
@@ -50,20 +45,30 @@ def cli(ctx):
     pass
 
 @cli.command()
-def train():
+@click.argument('int',required=False)
+def train(int):
   """
   Train the TF Sequential DNN with Supervised Learning
   """
   click.echo('\nTrain the TF DNN')
 
-  mnistErrors = MNISTerrors()
+  # --------------- Load float or integer images -----------------
+  if int:
+    print("\nTrain with integer rather than float images")
 
-  # 24/4/23 DH:
-  x_trainSet = x_train[:700]
-  y_trainSet = y_train[:700]
-  #x_trainSet = x_train[:2000]
-  #y_trainSet = y_train[:2000]
+    mnistErrors = MNISTerrors(integer=True)
+    x_trainSet = mnistErrors.tfConfigTrain.x_train[:700]
+    y_trainSet = mnistErrors.tfConfigTrain.y_train[:700]
+  else:
+    mnistErrors = MNISTerrors()
 
+    # 24/4/23 DH:
+    x_trainSet = mnistErrors.tfConfigTrain.x_train[:700]
+    y_trainSet = mnistErrors.tfConfigTrain.y_train[:700]
+    #x_trainSet = x_train[:2000]
+    #y_trainSet = y_train[:2000]
+  # --------------------------------------------------------------
+    
   # 1/4/23 DH: List of dicts for DNN params
   paramDictList = [
     #{'dense1': 784, 'dropout1': None, 'trainingNum': x_train.shape[0], 'epochs': 5, 'runs': 1, 'reruns': 1 },
@@ -71,7 +76,7 @@ def train():
     {'dense1': 20, 'dropout1': None, 'epochs': 1, 'x_trainSet': x_trainSet, 'y_trainSet': y_trainSet,
      'trainingNum': x_trainSet.shape[0], 'runs': 1, 'reruns': 1 },
     ]
-  
+
   mnistErrors.tfConfigTrain.batchRunAshore(paramDictList)
 
 @cli.command()
@@ -84,8 +89,8 @@ def rl():
   mnistErrors = MNISTerrors()
 
   # 24/4/23 DH:
-  x_trainSet = x_train[:700]
-  y_trainSet = y_train[:700]
+  x_trainSet = mnistErrors.tfConfigTrain.x_train[:700]
+  y_trainSet = mnistErrors.tfConfigTrain.y_train[:700]
   #x_trainSet = x_train[:2000]
   #y_trainSet = y_train[:2000]
 

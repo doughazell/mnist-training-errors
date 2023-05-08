@@ -10,10 +10,10 @@ import signal
 import sys
 
 class TFConfigRL(TFConfig):
-  def __init__(self, tfConfigTrain) -> None:
+  def __init__(self, tfConfigTrain, integer=False) -> None:
     
     # Get access to parent attributes via 'super()'
-    super().__init__()
+    super().__init__(integer=integer)
     
     # 30/4/23 DH: Refactor GSpreadErrors class
     self.gspreadRL = GSpreadRL(spreadsheet="Addresses",sheet="mnist-rl")
@@ -53,7 +53,7 @@ class TFConfigRL(TFConfig):
   def rlRunPart(self):
     # 23/4/23 DH: Get trained NN (wrapped with softmax layer)
     self.probability_model = self.tfModel.getProbabilityModel(self.model)
-    softmax2DList = self.probability_model(x_test).numpy()
+    softmax2DList = self.probability_model(self.x_test).numpy()
 
     self.runPartNum += 1
     
@@ -68,7 +68,7 @@ class TFConfigRL(TFConfig):
     """
     self.runPartNumbers[self.runPartNum] = {'partStartCnt': self.iCnt}
 
-    self.imgNum = x_test.shape[0]
+    self.imgNum = self.x_test.shape[0]
     print("*************************************************************************")
     print(self.runPartNum,") Looping through",self.imgNum,"images from x_test")
     print("*************************************************************************\n")
@@ -85,7 +85,7 @@ class TFConfigRL(TFConfig):
       with random small training sets (like agent CPD...)
       2) Selective retrain failes after batch training to 50% accurate
       """
-      if y_test[elem] != predictedVal:
+      if self.y_test[elem] != predictedVal:
         self.iCnt += 1
 
         # 22/4/23 DH: Send 'x_test[elem]' to 'bitwiseAndDefinitive()' to get self checking update
@@ -93,14 +93,14 @@ class TFConfigRL(TFConfig):
 
         # 26/4/23 DH: Adding 'class weights' didn't help (prob due to overriding TF algorithms)
         classWeightDict = {0:1, 1:1, 2:1, 3:1, 4:1, 5:1, 6:1, 7:1, 8:1, 9:1}
-        classWeightDict[ y_test[elem] ] = 2
+        classWeightDict[ self.y_test[elem] ] = 2
 
-        x_test_elemArray = np.array([x_test[elem]])
-        y_test_elemArray = np.array([y_test[elem]])
+        x_test_elemArray = np.array([self.x_test[elem]])
+        y_test_elemArray = np.array([self.y_test[elem]])
 
         #print("x_test[elem]:",type(x_test_elemArray),x_test_elemArray.shape )
         #print("y_test[elem]:",type(y_test_elemArray),y_test_elemArray.shape )
-        print("Predicted value:",predictedVal,", Expected value:",y_test[elem])
+        print("Predicted value:",predictedVal,", Expected value:",self.y_test[elem])
 
         # 26/4/23 DH: 'train_on_batch' resulted in "tensor 'Placeholder/_1' value" error
         self.tfModel.model.fit(x=x_test_elemArray, y=y_test_elemArray)

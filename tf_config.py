@@ -9,25 +9,30 @@ import pickle
 import time
 import numpy
 
-"""
-Load and prepare the [MNIST dataset](http://yann.lecun.com/exdb/mnist/). 
-Convert the sample data from integers to floating-point numbers (WHY...???)
-
-("The training set contains 60000 examples, and the test set 10000 examples")
-"""
-mnist = tf.keras.datasets.mnist
-# https://www.tensorflow.org/api_docs/python/tf/keras/datasets/mnist/load_data()
-(x_train, y_train), (x_test, y_test) = mnist.load_data()
-
-# 6/5/23 DH: WHY...????
-#  '$ tf-test train' appears to be more accurate for floats vs integers (5800 vs 7600 for 20Dense-700Train)
-x_train, x_test = x_train / 255.0, x_test / 255.0
-
 class TFConfig(object):
 
-  def __init__(self) -> None:
+  def __init__(self, integer=False) -> None:
+    # 8/5/23 DH:
+    """
+    Load and prepare the [MNIST dataset](http://yann.lecun.com/exdb/mnist/). 
+    Convert the sample data from integers to floating-point numbers (WHY...???)
+
+    ("The training set contains 60000 examples, and the test set 10000 examples")
+    """
+    mnist = tf.keras.datasets.mnist
+    # https://www.tensorflow.org/api_docs/python/tf/keras/datasets/mnist/load_data()
+    (self.x_train, self.y_train), (self.x_test, self.y_test) = mnist.load_data()
+
+    # 6/5/23 DH: WHY...????
+    #  '$ tf-test train' appears to be more accurate for floats vs integers 
+    #  (5800 vs 7600 for 20Dense-700Train)
+    if integer is False:
+      self.x_train = self.x_train / 255.0
+      self.x_test = self.x_test / 255.0
+
     self.tfModel = TFModel()
 
+    # ------------ Attempt for RL image detection ---------------
     self.mnistFilename = "digitDictionary.pkl"
     self.mnistFilenameINT = "digitDictionaryINTEGER.pkl"
 
@@ -67,13 +72,8 @@ class TFConfig(object):
 
   def modelEval(self,start=False):
     print("--- model.evaluate() ---")
-    
-    #print("Using x_train + y_train (%i): "%(x_train.shape[0]))
-    #self.tfModel.model.evaluate(x_train,  y_train, verbose=2)
-    #print("***")
-    
-    print("Using x_test + y_test (%i): "%(x_test.shape[0]))
-    evalRes = self.tfModel.model.evaluate(x_test,  y_test, verbose=2)
+    print("Using x_test + y_test (%i): "%(self.x_test.shape[0]))
+    evalRes = self.tfModel.model.evaluate(self.x_test,  self.y_test, verbose=2)
     accuracyPercent = "{:.2f}".format(evalRes[1])
     print("evaluate() accuracy:",accuracyPercent)
     print("------------------------\n")
@@ -121,8 +121,8 @@ class TFConfig(object):
     #digitDict = {0:None, 1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None}
     self.digitDict = {0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[], 7:[], 8:[], 9:[]}
 
-    imgs = x_test
-    imgValues = y_test
+    imgs = self.x_test
+    imgValues = self.y_test
 
     imgNum = imgs.shape[0]
 
@@ -258,8 +258,8 @@ class TFConfig(object):
     #self.printZeroDigitArrayValues()
     
     # 7/5/23 DH: 'x_test' is converted to float above (for NN accuracy reasons)
-    imgs = x_test
-    imgValues = y_test
+    imgs = self.x_test
+    imgValues = self.y_test
 
     imgNum = imgs.shape[0]
     #imgNum = 2
