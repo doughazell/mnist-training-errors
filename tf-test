@@ -49,16 +49,24 @@ def cli(ctx):
 def train(int):
   """
   Train the TF Sequential DNN with Supervised Learning
+
+    1) "int" = Leave the images as integers (rather than convert to floats)
   """
   click.echo('\nTrain the TF DNN')
 
-  # --------------- Load float or integer images -----------------
+  # ---------------- Load float or integer images -----------------
   if int:
-    print("\nTrain with integer rather than float images")
+    if "int" in int:
+      print("\nTrain with integer rather than float images")
 
-    mnistErrors = MNISTerrors(integer=True)
-    x_trainSet = mnistErrors.tfConfigTrain.x_train[:700]
-    y_trainSet = mnistErrors.tfConfigTrain.y_train[:700]
+      mnistErrors = MNISTerrors(integer=True)
+      x_trainSet = mnistErrors.tfConfigTrain.x_train[:700]
+      y_trainSet = mnistErrors.tfConfigTrain.y_train[:700]
+    else:
+      ctx = click.get_current_context()
+      click.echo(ctx.get_help())
+      ctx.exit()
+  
   else:
     mnistErrors = MNISTerrors()
 
@@ -122,6 +130,10 @@ def cartpole():
 def mnist(check,digit):
   """
   Get example of an image for each digit
+
+    1) "check"       = Check all the images
+
+       "check [0-9]" = Check [0-9] image
   """
   click.echo("\nMNIST image file creation/check")
   
@@ -138,19 +150,30 @@ def mnist(check,digit):
 
 # 6/5/23 DH:
 @cli.command()
-@click.argument('convert',required=False)
-def bitwise(convert):
+@click.argument('arg',required=False)
+def bitwise(arg):
   """
   Test correlation of 'y_test[index]' with bitwise-AND
+
+    1) "convert" = Convert the digit dictionary from float to integers
+
+    2) "check"   = Check ID of example images
   """
   tfCfg = TFConfig()
 
-  if convert:
-    tfCfg.convertDigitDict()
+  if arg:
+    if "convert" in arg:
+      tfCfg.convertDigitDict()
+    elif "check" in arg:
+      print("Check ID of example images")
+      tfCfg.bitwiseAND(check=True)
+    else:
+      ctx = click.get_current_context()
+      click.echo(ctx.get_help())
+      ctx.exit()
+    
   else:
     tfCfg.bitwiseAND()
-
-
 
 # 30/3/23 DH:
 if __name__ == '__main__':

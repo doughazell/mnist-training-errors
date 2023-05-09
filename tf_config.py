@@ -8,6 +8,7 @@ from gspread_errors import *
 import pickle
 import time
 import numpy
+import sys
 
 class TFConfig(object):
 
@@ -35,8 +36,10 @@ class TFConfig(object):
     # ------------ Attempt for RL image detection ---------------
     self.mnistFilename = "digitDictionary.pkl"
     self.mnistFilenameINT = "digitDictionaryINTEGER.pkl"
+    self.digitFilename = "digitOutput"
 
     with open(self.mnistFilenameINT, 'rb') as fp:
+    #with open(self.mnistFilename, 'rb') as fp:
       self.digitDict = pickle.load(fp)
 
   # 6/5/23 DH: 'self.digitDict' used to be single image per digit key (rather than a list)
@@ -69,7 +72,6 @@ class TFConfig(object):
     # 'True' if key press, 'False' if mouse press, 'None' if timeout
     return retButtonPress
     
-
   def modelEval(self,start=False):
     print("--- model.evaluate() ---")
     print("Using x_test + y_test (%i): "%(self.x_test.shape[0]))
@@ -192,16 +194,18 @@ class TFConfig(object):
 
   # --------------------------------------------------------------------------------------------
   # 7/5/23 DH: Test bitwise-AND with example images for reinforcement learning
+  #           (which is an example of "Expert system" and shows power of AI for image variation)
   # --------------------------------------------------------------------------------------------
-  def printZeroDigitArrayValues(self):
+  def printDigitArrayValues(self, testImg):
     # Get the image for dictionary key '0'
-    testImg = self.digitDict[0][0]
+    #testImg = self.digitDict[0][0]
 
     print("Test img:",type(testImg), testImg.shape, type(testImg[0][0]))
 
     xOffset = 15
     y = 15
     print(xOffset,",",y,"of",testImg.shape)
+
     for xIdx in range(7):
       xIdx += xOffset
 
@@ -229,56 +233,165 @@ class TFConfig(object):
       
     print()
 
+  def saveDigitArrayValues(self, testImg,fileNum=1):
+    filename = self.digitFilename + str(fileNum)
+    with open(filename, 'w') as fp:
+
+      fp.write("Test img:" + str(type(testImg)) + " " + str(testImg.shape) + " " +
+               str(type(testImg[0][0])) + "\n\n")
+
+      # ----------------- Print selected region --------------------
+      
+      xOffset = 15
+      y = 15
+      fp.write(str(xOffset) + "," + str(y) + " of " + str(testImg.shape) + "\n")
+
+      for xIdx in range(7):
+        xIdx += xOffset
+
+        # 6/5/23 DH: When remove "Convert the sample data from integers to floating-point numbers"
+        #            "{:.2f}" becomes "{:3}"
+
+        # This a row printout (despite looking like a column in code)
+        fp.write("{:4}".format(testImg[xIdx][y]) +
+              "{:4}".format(testImg[xIdx][y+1]) +
+              "{:4}".format(testImg[xIdx][y+2]) +
+              "{:4}".format(testImg[xIdx][y+3]) +
+              "{:4}".format(testImg[xIdx][y+4]) +
+              "{:4}".format(testImg[xIdx][y+5]) +
+              "{:4}".format(testImg[xIdx][y+6]) +
+              "{:4}".format(testImg[xIdx][y+7]) + "\n")
+        
+      fp.write("\n")
+      # ------------------------------------------------------------
+
+      # --------------------- Print whole image --------------------
+      xSize, ySize = testImg.shape
+
+      fp.write("\n")
+      for x in range(xSize):
+        for y in range(ySize):
+          fp.write("{:4}".format(testImg[x][y]))
+        fp.write("\n")
+      # ------------------------------------------------------------
+
   def getImgCheckTotals(self, img):
     #totals = []
     totalsDict = {}
 
+    # Convert image from float to integer array
+    #img = img * 255
+    #img = np.asarray(img, dtype = 'uint8')
+
     for key in self.digitDict.keys():
   
+      # First (and only) element of list for each digit 'key'
       testImg = self.digitDict[key][0]
+
+      self.displayImg(img)
+      #self.displayImg(testImg)
+
+      # Convert image from float to integer array
+      #testImg = testImg * 255
+      #testImg = np.asarray(testImg, dtype = 'uint8')
+
+      #print("testImg:",testImg.shape)
+      #print("img:",img.shape)
 
       bitwiseAndRes = numpy.bitwise_and(testImg, img)
       imgX, imgY = bitwiseAndRes.shape
-      #print("Shape:",imgX, imgY)
+      #print("\n",key,"- Shape:",imgX, imgY)
 
       iTotal = 0
+      iPixValChg = 0
       for x in range(imgX):
         for y in range(imgY):
-          iTotal += bitwiseAndRes[x][y]
+          #iTotal += bitwiseAndRes[x][y]
+          iTotal += 1
 
-      #print(key,"total:", iTotal)
+          # 9/5/23 DH: appears to be a "hooked" test function that selectively alters the image 
+          #            (giving image a mottled effect)
+          if bitwiseAndRes[x][y] > 0:
+            """
+            print("X:",x,"Y:",y,"=",bitwiseAndRes[x][y])
+            print("testImg:",testImg[x][y],"img:",img[x][y])
+            print("testImg & img:",testImg[x][y] & img[x][y])
+
+            #print("{:3}".format(testImg[xIdx][y]),
+            print("{:>10}".format(bin(testImg[x][y])))
+            print("{:>10}".format(bin(img[x][y])))
+            print("{:>10}".format(bin(bitwiseAndRes[x][y])))
+            print("{:>10}".format(bin(testImg[x][y] & img[x][y])))
+            print()
+            """
+
+            # 9/5/23 DH: Make whole image binary (rather than grey_scale)
+            pixVal = int(key+1) * 100
+            img[x][y] = pixVal
+            iPixValChg += 1
+
+      """
+      print("********************")
+      print(key,"total:", iTotal)
+      print("********************")
+      """
+      if key < 3:
+        print("Key:",key,"PixVal:",pixVal,"iPixValChg:",iPixValChg)
+        # Print out binary image to compare with grey_scale image at start of function
+        self.printDigitArrayValues(img)
+        self.saveDigitArrayValues(img,key)
+        self.displayImg(img,timeout=1)
+      else:
+        sys.exit()
+
       #totals.append(iTotal)
       totalsDict[key] = iTotal
+    # END: ------------ 'for key in self.digitDict.keys()' --------------
 
     return totalsDict
   
-  def bitwiseAND(self):
+  def bitwiseAND(self, check=False):
     print("Correlating 'y_test[index]' with return of highest bitwise-AND\n")
 
-    #self.printZeroDigitArrayValues()
+    testImg = self.digitDict[0][0]
+    self.printDigitArrayValues(testImg)
     
     # 7/5/23 DH: 'x_test' is converted to float above (for NN accuracy reasons)
-    imgs = self.x_test
-    imgValues = self.y_test
+    if check:
+      # 'digitDict.values()' is array of 1 elem arrays
+      valuesList = list(self.digitDict.values())
+      # imgs = numpy.asarray(valuesList[0])
+      
+      # Need to loop through the first element in each of the digit array
+      #imgs = np.ndarray(0)
+      imgList = []
+      for key in self.digitDict.keys():
+        #imgs = np.append(imgs, valuesList[key])
+        imgList.append(valuesList[key][0])
+      imgs = numpy.asarray(imgList)
 
-    imgNum = imgs.shape[0]
-    #imgNum = 2
+      imgValues = list(self.digitDict.keys())
+    else:
+      imgs = self.x_test
+      imgValues = self.y_test
 
     totalsErrors = 0
     errorNum = 0
+    
+    # 'shape' returns a tuple so access first value
+    imgNum = imgs.shape[0]
+    print("imgNum:",imgNum)
+    #imgNum = 1
     for elem in range(imgNum):
 
-      # Convert image from float to integer array
       img = imgs[elem]
-      img = img * 255
-      img = np.asarray(img, dtype = 'uint8')
-      
+
       totalsDict = self.getImgCheckTotals(img)
 
       totals = list(totalsDict.values())
       digit = np.argmax(totals)
 
-      if int(digit) is not int(imgValues[elem]):
+      if int(digit) != int(imgValues[elem]):
         totalsErrors += 1
         #self.displayImg(img, timeout=2)
       
