@@ -240,7 +240,7 @@ class TFConfig(object):
       fp.write("Test img:" + str(type(testImg)) + " " + str(testImg.shape) + " " +
                str(type(testImg[0][0])) + "\n\n")
 
-      # ----------------- Print selected region --------------------
+      # ----------------- Write selected region --------------------
       
       xOffset = 15
       y = 15
@@ -265,7 +265,7 @@ class TFConfig(object):
       fp.write("\n")
       # ------------------------------------------------------------
 
-      # --------------------- Print whole image --------------------
+      # --------------------- Write whole image --------------------
       xSize, ySize = testImg.shape
 
       fp.write("\n")
@@ -317,7 +317,6 @@ class TFConfig(object):
             print("testImg:",testImg[x][y],"img:",img[x][y])
             print("testImg & img:",testImg[x][y] & img[x][y])
 
-            #print("{:3}".format(testImg[xIdx][y]),
             print("{:>10}".format(bin(testImg[x][y])))
             print("{:>10}".format(bin(img[x][y])))
             print("{:>10}".format(bin(bitwiseAndRes[x][y])))
