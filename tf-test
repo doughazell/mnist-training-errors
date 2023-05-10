@@ -46,7 +46,8 @@ def cli(ctx):
 
 @cli.command()
 @click.argument('int',required=False)
-def train(int):
+@click.option('-c', type=int, help="Training set count")
+def train(int,c):
   """
   Train the TF Sequential DNN with Supervised Learning
 
@@ -54,14 +55,20 @@ def train(int):
   """
   click.echo('\nTrain the TF DNN')
 
+  # 9/5/23 DH:
+  if c:
+    trainCount = c
+  else:
+    trainCount = 700
+
   # ---------------- Load float or integer images -----------------
   if int:
     if "int" in int:
       print("\nTrain with integer rather than float images")
 
       mnistErrors = MNISTerrors(integer=True)
-      x_trainSet = mnistErrors.tfConfigTrain.x_train[:700]
-      y_trainSet = mnistErrors.tfConfigTrain.y_train[:700]
+      x_trainSet = mnistErrors.tfConfigTrain.x_train[:trainCount]
+      y_trainSet = mnistErrors.tfConfigTrain.y_train[:trainCount]
     else:
       ctx = click.get_current_context()
       click.echo(ctx.get_help())
@@ -71,8 +78,8 @@ def train(int):
     mnistErrors = MNISTerrors()
 
     # 24/4/23 DH:
-    x_trainSet = mnistErrors.tfConfigTrain.x_train[:700]
-    y_trainSet = mnistErrors.tfConfigTrain.y_train[:700]
+    x_trainSet = mnistErrors.tfConfigTrain.x_train[:trainCount]
+    y_trainSet = mnistErrors.tfConfigTrain.y_train[:trainCount]
     #x_trainSet = x_train[:2000]
     #y_trainSet = y_train[:2000]
   # --------------------------------------------------------------
@@ -174,6 +181,34 @@ def bitwise(arg):
     
   else:
     tfCfg.bitwiseAND()
+
+# 10/5/23 DH:
+@cli.command()
+@click.option('-c', type=int, help="Initial training set count")
+def cpd(c):
+  """
+  Train the TF Sequential DNN with intermittent retraining
+  """
+
+  if c:
+    trainCount = c
+  else:
+    trainCount = 700
+  
+  print("\nTrain the TF DNN via CPD with initial training of",trainCount,"images")
+
+  mnistErrors = MNISTerrors()
+  
+  x_trainSet = mnistErrors.tfConfigTrain.x_train[:trainCount]
+  y_trainSet = mnistErrors.tfConfigTrain.y_train[:trainCount]
+    
+  paramDictList = [
+    
+    {'dense1': 20, 'dropout1': None, 'epochs': 1, 'x_trainSet': x_trainSet, 'y_trainSet': y_trainSet,
+     'trainingNum': x_trainSet.shape[0], 'runs': 1, 'reruns': 1 },
+    ]
+
+  mnistErrors.tfConfigRL.rlRun(paramDictList,rl=False)
 
 # 30/3/23 DH:
 if __name__ == '__main__':

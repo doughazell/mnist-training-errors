@@ -49,8 +49,54 @@ class TFConfigRL(TFConfig):
 
     return False
 
+  # 10/5/23 DH:
+  def retrainToBreakout(self,elem):
+    """
+    # 7/5/23 DH: TFConfig.bitwiseAND() shows that self checking via bitwise-AND with example image
+                  is only 25% accurate (7428/10000 errors).
+    
+    Demonstrates efficacy of TF
+    
+    1) 'y_test[elem]' not available for operational system, so need to try intermittent retrain 
+    with random small training sets (like agent CPD...)
+    2) Selective retrain EVERY FAILURE after batch training to 50% accurate
+    """
+    # 22/4/23 DH: Send 'x_test[elem]' to 'bitwiseAndDefinitive()' to get self checking update
+    # (...which in this case is a little REDUNDANT since 'y_test[elem]' is the answer we need...!)
+
+    # 26/4/23 DH: Adding 'class weights' didn't help (prob due to overriding TF algorithms)
+    classWeightDict = {0:1, 1:1, 2:1, 3:1, 4:1, 5:1, 6:1, 7:1, 8:1, 9:1}
+    classWeightDict[ self.y_test[elem] ] = 2
+
+    x_test_elemArray = np.array([self.x_test[elem]])
+    y_test_elemArray = np.array([self.y_test[elem]])
+
+    # 26/4/23 DH: 'train_on_batch' resulted in "tensor 'Placeholder/_1' value" error
+    #
+    # 10/5/23 DH: TRAIN ON EVERY FAILURE
+    self.tfModel.model.fit(x=x_test_elemArray, y=y_test_elemArray)
+
+    self.recordAccuracy()
+
+    if self.checkBreakout():
+      return True
+
+    return False # ie no breakout...
+
+  # 10/5/23 DH:
+  def recordAccuracy(self):
+    self.accuracyPercent = self.modelEval()
+
+    if not 'startPercent' in self.runPartNumbers[self.runPartNum]:
+    
+      print("Adding startPercent ", self.accuracyPercent,"to part",self.runPartNum,"\n")
+    
+      self.runPartNumbers[self.runPartNum]['startPercent'] = self.accuracyPercent
+      self.runPartNumbers[self.runPartNum]['lowestPercent'] = self.accuracyPercent
+      self.runPartNumbers[self.runPartNum]['highestPercent'] = self.accuracyPercent
+
   # 27/4/23 DH:
-  def rlRunPart(self):
+  def rlRunPart(self, rl):
     # 23/4/23 DH: Get trained NN (wrapped with softmax layer)
     self.probability_model = self.tfModel.getProbabilityModel(self.model)
     softmax2DList = self.probability_model(self.x_test).numpy()
@@ -73,47 +119,19 @@ class TFConfigRL(TFConfig):
     print(self.runPartNum,") Looping through",self.imgNum,"images from x_test")
     print("*************************************************************************\n")
     
+    if rl == False:
+      self.recordAccuracy()
+
     for elem in range(self.imgNum):
       predictedVal = np.argmax(softmax2DList[elem])
-      """
-      # 7/5/23 DH: TFConfig.bitwiseAND() shows that self checking via bitwise-AND with example image
-                   is only 25% accurate (7428/10000 errors).
       
-      Demonstrates efficacy of TF
-      
-      1) 'y_test[elem]' not available for operational system, so need to try intermittent retrain 
-      with random small training sets (like agent CPD...)
-      2) Selective retrain failes after batch training to 50% accurate
-      """
       if self.y_test[elem] != predictedVal:
         self.iCnt += 1
+        #print("Predicted value:",predictedVal,", Expected value:",self.y_test[elem])
 
-        # 22/4/23 DH: Send 'x_test[elem]' to 'bitwiseAndDefinitive()' to get self checking update
-        # (...which in this case is a little REDUNDANT since 'y_test[elem]' is the answer we need...!)
-
-        # 26/4/23 DH: Adding 'class weights' didn't help (prob due to overriding TF algorithms)
-        classWeightDict = {0:1, 1:1, 2:1, 3:1, 4:1, 5:1, 6:1, 7:1, 8:1, 9:1}
-        classWeightDict[ self.y_test[elem] ] = 2
-
-        x_test_elemArray = np.array([self.x_test[elem]])
-        y_test_elemArray = np.array([self.y_test[elem]])
-
-        #print("x_test[elem]:",type(x_test_elemArray),x_test_elemArray.shape )
-        #print("y_test[elem]:",type(y_test_elemArray),y_test_elemArray.shape )
-        print("Predicted value:",predictedVal,", Expected value:",self.y_test[elem])
-
-        # 26/4/23 DH: 'train_on_batch' resulted in "tensor 'Placeholder/_1' value" error
-        self.tfModel.model.fit(x=x_test_elemArray, y=y_test_elemArray)
-
-        self.accuracyPercent = self.modelEval()
-        if not 'startPercent' in self.runPartNumbers[self.runPartNum]:
-          print("Adding startPercent ", self.accuracyPercent,"to part",self.runPartNum,"\n")
-          self.runPartNumbers[self.runPartNum]['startPercent'] = self.accuracyPercent
-          self.runPartNumbers[self.runPartNum]['lowestPercent'] = self.accuracyPercent
-          self.runPartNumbers[self.runPartNum]['highestPercent'] = self.accuracyPercent
-
-        if self.checkBreakout():
-          break
+        if rl == True:
+          if self.retrainToBreakout(elem) == True:
+            break
 
       # END: ------------- 'if y_test[elem] != predictedVal' --------------
 
@@ -126,6 +144,67 @@ class TFConfigRL(TFConfig):
 
     # END: ------------- 'for elem in range(self.imgNum)' -------------
   
+  # 24/4/23 DH:
+  def rlRun(self, paramDictList, rl=True):
+    
+    for paramDict in paramDictList:
+
+      self.build(paramDict)
+      self.trgTotal = paramDict['trainingNum']
+
+      self.iCnt = 0
+      self.errorNum = 0
+      self.runPartNum = 0
+      # 28/4/23 DH: Now a dictionary of dictionaries
+      self.runPartNumbers = {}
+
+      # 10/5/23 DH: Running the 'rl' command (and not 'cpd') 
+      if rl == True:
+        self.desiredIncrease = 0.05
+        self.rlRunPart(rl)
+
+        while float(self.accuracyPercent) < 0.90:
+          
+          self.desiredIncrease += 0.05
+          self.rlRunPart(rl)
+      
+        self.printStats()
+        # 29/4/23 DH:
+        self.populateGSheetRL()
+      
+      # 10/5/23 DH: Running the 'cpd' command 
+      else:
+        self.rlRunPart(rl)
+
+        while float(self.accuracyPercent) < 1.0:
+          # self.tfModel.createTrainedModel()::model.fit(x_trainSet, y_trainSet, epochs=epochs)
+          
+          #self.tfModel.model.fit(x=paramDict['x_trainSet'] , y=paramDict['y_trainSet'])
+          #self.trgTotal += paramDict['trainingNum']
+
+          self.tfModel.model.fit(x=self.x_test, y=self.y_test)
+          self.trgTotal += self.x_test.shape[0]
+          #self.tfModel.model.fit(x=self.x_train, y=self.y_train)
+          #self.trgTotal += self.x_train.shape[0]
+
+          self.rlRunPart(rl)
+        
+        self.printStats()
+  
+  # 7/5/23 DH: Handling interrupt when RL does not run to completion (due to Spaceport exception handling)
+  #            ...get the stats gained before stopping to coach a debrief.
+  def signal_handler(self, sig, frame):
+    print('\nYou pressed Ctrl+C so saving stats (to coach a debrief)...')
+
+    self.printStats()
+
+    print("\nTFConfigRL.signal_handler()")
+    print("  #self.populateGSheetRL()")
+    #self.populateGSheetRL()
+    
+    sys.exit(0)
+
+  # ========================= Display stats + populate Google Sheets =====================
   # 29/4/23 DH:
   def getPartCnt(self):
     # 28/4/23 DH: Print part count (counts recorded at start for each part, not num in part)
@@ -161,7 +240,10 @@ class TFConfigRL(TFConfig):
       # 28/4/23 DH: Other metrics for part
       currentPart = self.runPartNumbers[self.key]
 
-      start = currentPart['startPercent']
+      if 'startPercent' in currentPart:
+        start = currentPart['startPercent']
+      else:
+        start = "XXX"
 
       # 7/5/23 DH: Needed for Ctrl-C interrupt handling
       if 'endPercent' in currentPart: 
@@ -169,8 +251,15 @@ class TFConfigRL(TFConfig):
       else:
         end = "XXX"
       
-      low = currentPart['lowestPercent']
-      high = currentPart['highestPercent']
+      if 'lowestPercent' in currentPart:
+        low = currentPart['lowestPercent']
+      else:
+        low = "XXX"
+
+      if 'highestPercent' in currentPart:
+        high = currentPart['highestPercent']
+      else:
+        high = "XXX"
 
       print("  : (start:",start,", end:",end,", lowest:",low,", highest:",high,")")
     # END: ------- 'for key in self.runPartNumbers.keys()' -------
@@ -178,6 +267,7 @@ class TFConfigRL(TFConfig):
   # 29/4/23 DH:
   def printStats(self):
     print("-----------")
+    print("Training total:",self.trgTotal)
     print("Total errors:",self.iCnt)
     print("Run parts:",self.runPartNum)
     print("Accuracy start :",self.startPercent)
@@ -242,36 +332,5 @@ class TFConfigRL(TFConfig):
     print()
     self.gspreadRL.getGSheetsDataRL(sheet, self.gspreadRLparts)
 
-  # 24/4/23 DH:
-  def rlRun(self, paramDictList):
-    
-    for paramDict in paramDictList:
-
-      self.build(paramDict)
-
-      self.iCnt = 0
-      self.errorNum = 0
-      self.runPartNum = 0
-      # 28/4/23 DH: Now a dictionary of dictionaries
-      self.runPartNumbers = {}
-
-      self.desiredIncrease = 0.05
-      self.rlRunPart()
-      while float(self.accuracyPercent) < 0.90:
-        self.desiredIncrease += 0.05
-        self.rlRunPart()
-
-      self.printStats()
-      # 29/4/23 DH:
-      self.populateGSheetRL()
-  
-  # 7/5/23 DH: Handling interrupt when RL does not run to completion (due to Spaceport exception handling)
-  #            ...get the stats gained before stopping to coach a debrief.
-  def signal_handler(self, sig, frame):
-    print('\nYou pressed Ctrl+C so saving stats (to coach a debrief)...')
-    self.printStats()
-    self.populateGSheetRL()
-    
-    sys.exit(0)
 
   
