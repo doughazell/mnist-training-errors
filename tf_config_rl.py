@@ -140,6 +140,7 @@ class TFConfigRL(TFConfig):
         print(self.iCnt, "errors at element",elem)
         print("####################################################################")
         print()
+        # "%100" error gets printed out ONLY ONCE (not until "%100 + 1" error)
         self.errorNum = self.iCnt
 
     # END: ------------- 'for elem in range(self.imgNum)' -------------
@@ -176,6 +177,8 @@ class TFConfigRL(TFConfig):
       else:
         self.rlRunPart(rl)
 
+        # 'accuracyPercent' rounded to 2 decimal places in 'TFConfig.modelEval()' so can reach 1.0, ie 100%
+        # (Needs < 51 errors of 10,000 in 'self.rlRunPart()' for 2dp to round to 100%)
         while float(self.accuracyPercent) < 1.0:
           # self.tfModel.createTrainedModel()::model.fit(x_trainSet, y_trainSet, epochs=epochs)
           
@@ -183,9 +186,24 @@ class TFConfigRL(TFConfig):
           #self.trgTotal += paramDict['trainingNum']
 
           self.tfModel.model.fit(x=self.x_test, y=self.y_test)
-          self.trgTotal += self.x_test.shape[0]
-          #self.tfModel.model.fit(x=self.x_train, y=self.y_train)
-          #self.trgTotal += self.x_train.shape[0]
+          x_testNum = self.x_test.shape[0]
+          self.trgTotal += x_testNum
+
+          # Now also train with non tested images
+          """
+          10,10 = 50/50
+          20,10 = 66/33
+          30,10 = 75/25
+          40,10 = 80/20
+          Result =  760700 for 50/50 images cf 260700 to reach 2dp rounded 100%
+          Result = 1950700 for 66/33 images
+          Result = 2040700 for 75/25 images
+          Result = 4750700 for 80/20 images
+          """
+          ratio = 0
+          if ratio > 0:
+            self.tfModel.model.fit(x=self.x_train[:(x_testNum * ratio)], y=self.y_train[:(x_testNum * ratio)])
+            self.trgTotal += (x_testNum * ratio)
 
           self.rlRunPart(rl)
         

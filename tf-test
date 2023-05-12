@@ -11,6 +11,8 @@ s_f
 # 30/4/23 DH: Refactor of TFConfig class
 from tf_config_train import *
 from tf_config_rl import *
+# 12/5/23 DH: Refactor of TFConfig class
+from tf_config_misc import *
 
 # 2/5/23 DH:
 import click
@@ -35,7 +37,7 @@ def cli(ctx):
 
     a) high level with Supervised Learning
 
-    b) 50% level prior to Reinforcement Learning
+    b) 50% level prior to Reinforcement Learning / Retraining
   
   Categorical DQN uses OpenAI Gym for CartPole physics
   """
@@ -144,16 +146,16 @@ def mnist(check,digit):
   """
   click.echo("\nMNIST image file creation/check")
   
-  tfCfg = TFConfig()
+  tfCfgMisc = TFConfigMisc()
 
   if check:
     if digit:
       print(digit)
-      tfCfg.checkMNISTexamples(digit)
+      tfCfgMisc.checkMNISTexamples(digit)
     else:
-      tfCfg.checkMNISTexamples()
+      tfCfgMisc.checkMNISTexamples()
   else:
-    tfCfg.getMNISTexamples()
+    tfCfgMisc.getMNISTexamples()
 
 # 6/5/23 DH:
 @cli.command()
@@ -166,21 +168,21 @@ def bitwise(arg):
 
     2) "check"   = Check ID of example images
   """
-  tfCfg = TFConfig()
+  tfCfgMisc = TFConfigMisc()
 
   if arg:
     if "convert" in arg:
-      tfCfg.convertDigitDict()
+      tfCfgMisc.convertDigitDict()
     elif "check" in arg:
       print("Check ID of example images")
-      tfCfg.bitwiseAND(check=True)
+      tfCfgMisc.bitwiseAND(check=True)
     else:
       ctx = click.get_current_context()
       click.echo(ctx.get_help())
       ctx.exit()
     
   else:
-    tfCfg.bitwiseAND()
+    tfCfgMisc.bitwiseAND()
 
 # 10/5/23 DH:
 @cli.command()
