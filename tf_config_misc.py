@@ -13,7 +13,7 @@ bitwise
     getImgCheckTotals()
       printDigitArrayValues()
       saveDigitArrayValues()
-      
+
   convertDigitDict()
 
 """
@@ -123,9 +123,11 @@ class TFConfigMisc(TFConfig):
   def bitwiseAND(self, check=False):
     print("Correlating 'y_test[index]' with return of highest bitwise-AND\n")
 
-    testImg = self.digitDict[0][0]
-    self.printDigitArrayValues(testImg)
+    # Get first example digit ie 0
+    #testImg = self.digitDict[0][0]
+    #self.printDigitArrayValues(testImg)
     
+    self.check = check
     # 7/5/23 DH: 'x_test' is converted to float above (for NN accuracy reasons)
     if check:
       # 'digitDict.values()' is array of 1 elem arrays
@@ -142,6 +144,7 @@ class TFConfigMisc(TFConfig):
 
       imgValues = list(self.digitDict.keys())
     else:
+      # 12/5/23 DH: By default (unless 'integer=True' specified) the images are float
       imgs = self.x_test
       imgValues = self.y_test
 
@@ -156,6 +159,7 @@ class TFConfigMisc(TFConfig):
 
       img = imgs[elem]
 
+      self.displayImg(img)
       totalsDict = self.getImgCheckTotals(img)
 
       totals = list(totalsDict.values())
@@ -296,24 +300,22 @@ class TFConfigMisc(TFConfig):
     #totals = []
     totalsDict = {}
 
+    # 12/5/23 DH: By default (unless 'integer=True' specified) the images 'x_train' and 'x_test' are float
     # Convert image from float to integer array
-    #img = img * 255
-    #img = np.asarray(img, dtype = 'uint8')
+    img = img * 255
+    img = np.asarray(img, dtype = 'uint8')
 
     for key in self.digitDict.keys():
   
       # First (and only) element of list for each digit 'key'
       testImg = self.digitDict[key][0]
 
-      self.displayImg(img)
-      #self.displayImg(testImg)
+      #self.displayImg(img)
 
       # Convert image from float to integer array
+      # ('testImg' is likely to already be an integer so commented out for reference)
       #testImg = testImg * 255
       #testImg = np.asarray(testImg, dtype = 'uint8')
-
-      #print("testImg:",testImg.shape)
-      #print("img:",img.shape)
 
       bitwiseAndRes = numpy.bitwise_and(testImg, img)
       imgX, imgY = bitwiseAndRes.shape
@@ -324,11 +326,12 @@ class TFConfigMisc(TFConfig):
       for x in range(imgX):
         for y in range(imgY):
           #iTotal += bitwiseAndRes[x][y]
-          iTotal += 1
-
+          
           # 9/5/23 DH: appears to be a "hooked" test function that selectively alters the image 
           #            (giving image a mottled effect)
           if bitwiseAndRes[x][y] > 0:
+            iTotal += 1
+
             """
             print("X:",x,"Y:",y,"=",bitwiseAndRes[x][y])
             print("testImg:",testImg[x][y],"img:",img[x][y])
@@ -341,24 +344,26 @@ class TFConfigMisc(TFConfig):
             print()
             """
 
-            # 9/5/23 DH: Make whole image binary (rather than grey_scale)
-            pixVal = int(key+1) * 100
-            img[x][y] = pixVal
-            iPixValChg += 1
+            if self.check:
+              # 9/5/23 DH: Make whole image binary (rather than grey_scale)
+              pixVal = int(key+1) * 100
+              img[x][y] = pixVal
+              iPixValChg += 1
 
       """
       print("********************")
       print(key,"total:", iTotal)
       print("********************")
       """
-      if key < 3:
-        print("Key:",key,"PixVal:",pixVal,"iPixValChg:",iPixValChg)
-        # Print out binary image to compare with grey_scale image at start of function
-        self.printDigitArrayValues(img)
-        self.saveDigitArrayValues(img,key)
-        self.displayImg(img,timeout=3)
-      else:
-        sys.exit()
+      if self.check:
+        if key < 3:
+          print("Key:",key,"PixVal:",pixVal,"iPixValChg:",iPixValChg)
+          # Print out binary image to compare with grey_scale image at start of function
+          self.printDigitArrayValues(img)
+          self.saveDigitArrayValues(img,key)
+          self.displayImg(img,timeout=3)
+        else:
+          sys.exit()
 
       #totals.append(iTotal)
       totalsDict[key] = iTotal

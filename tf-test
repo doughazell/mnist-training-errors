@@ -13,6 +13,7 @@ from tf_config_train import *
 from tf_config_rl import *
 # 12/5/23 DH: Refactor of TFConfig class
 from tf_config_misc import *
+from tf_config_image import *
 
 # 2/5/23 DH:
 import click
@@ -211,6 +212,20 @@ def cpd(c):
     ]
 
   mnistErrors.tfConfigRL.rlRun(paramDictList,rl=False)
+
+@cli.command()
+@click.option('-c', type=int, help="Number of MNIST digits to test")
+def image(c):
+  """
+  Train the TF Sequential DNN for image manipulation 
+  
+  (ie input + output layers have same node number)
+  """
+  tfCfgImage = TFConfigImage()
+  if c:
+    tfCfgImage.displayImages(number=c)
+  else:
+    tfCfgImage.displayImages()
 
 # 30/3/23 DH:
 if __name__ == '__main__':
