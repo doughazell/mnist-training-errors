@@ -26,6 +26,7 @@ class TFConfigTrain(TFConfig):
     # 22/4/23 DH: Add ALL TEST DATA to trained model (wrapped with softmax layer)
     # (to update the predicted output from flattened image will prob require disappearing into TensorFlow...)
     softmax2DList = self.probability_model(self.x_test).numpy()
+    
     softmaxList = softmax2DList[0]
     print("\nSoftmax list for element 0 of 'x_test': ",softmaxList )
 

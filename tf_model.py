@@ -10,6 +10,33 @@ class TFModel(object):
     print("TensorFlow version:", tf.__version__)
     print("-------------------------------------")
 
+  # 13/5/23 DH:
+  def createTrainedImageModel(self, x_trainSet, y_trainSet, epochs):
+    model = tf.keras.models.Sequential([
+      tf.keras.layers.Flatten(input_shape=(28, 28))
+    ])
+
+    # 13/5/23 DH: 784-784 DNN
+    model.add( tf.keras.layers.Dense(28*28) )
+    
+    #loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    #loss_fn = tf.keras.losses.CategoricalCrossentropy()
+    loss_fn = tf.keras.losses.Poisson()
+
+    model.compile(optimizer='adam',
+                  loss=loss_fn,
+                  metrics=['accuracy'])
+    
+    print("\n--- model.fit() ---")
+    print("Using x_train + y_train (%i): "%(x_trainSet.shape[0]))
+    
+    model.fit(x_trainSet, y_trainSet, epochs=epochs)
+
+    model.summary()
+
+    self.model = model
+    return model
+
   # 27/3/23 DH:
   def createTrainedModel(self, dense1, dropout1, x_trainSet, y_trainSet, epochs):
     # 15/3/23 DH: https://www.kirenz.com/post/2022-06-17-introduction-to-tensorflow-and-the-keras-functional-api/

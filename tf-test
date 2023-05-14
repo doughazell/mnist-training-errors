@@ -215,18 +215,38 @@ def cpd(c):
 
 @cli.command()
 @click.option('-c', type=int, help="Number of MNIST digits to test")
-def image(c):
+@click.option('-d', is_flag=True, help="Display created MNIST images")
+def image(c,d):
   """
   Train the TF Sequential DNN for image manipulation 
   
   (ie input + output layers have same node number)
   """
-  tfCfgImage = TFConfigImage()
-  if c:
-    tfCfgImage.displayImages(number=c)
+  
+  if d:
+    showImg=True
   else:
-    tfCfgImage.displayImages()
+    showImg=False
 
+  if c:
+    trainCount = c
+  else:
+    trainCount = 10
+
+  tfCfgImage = TFConfigImage()
+
+  tfCfgImage.createImages(display=showImg, number=trainCount)
+
+  x_trainSet = tfCfgImage.x_test[:trainCount]
+  y_trainSet = tfCfgImage.x_testPlusDigit
+
+  #print(type(x_trainSet),type(y_trainSet),x_trainSet.shape,y_trainSet.shape)
+  
+  paramDict = {'epochs': 1, 'x_trainSet': x_trainSet, 'y_trainSet': y_trainSet, 
+               'trainingNum': x_trainSet.shape[0] }
+
+  tfCfgImage.runImageTrainer(paramDict)
+  
 # 30/3/23 DH:
 if __name__ == '__main__':
   
