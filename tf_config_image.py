@@ -1,6 +1,7 @@
 # 12/5/23 DH:
 
 from tf_config import *
+from tf_config_misc import *
 
 import numpy
 
@@ -8,6 +9,9 @@ class TFConfigImage(TFConfig):
 
   def __init__(self) -> None:
     super().__init__()
+
+    # 15/5/23 DH: Needed for 'saveDigitArrayValues()'
+    self.tfCfgMisc = TFConfigMisc()
 
     self.createDigitLabels()
 
@@ -59,14 +63,33 @@ class TFConfigImage(TFConfig):
     self.probability_model = self.tfModel.getProbabilityModel(self.model)
 
     # Put in unaltered MNIST digit
+    #        ---------
     softmax2DList = self.probability_model(self.x_test).numpy()
-    selectedElem = 0
-    img = softmax2DList[selectedElem]
-    img = img.reshape(28,28)
-    self.displayImg(img,timeout=3)
-    self.displayImg(self.x_test[selectedElem],timeout=3)
+    imgList = self.tfModel.model(self.x_test).numpy()
 
+    for elem in range(self.x_testPlusDigit.shape[0]):
+      imgSoftmax = softmax2DList[elem]
+      imgSoftmax = imgSoftmax.reshape(28,28)
 
+      imgModel = imgList[elem]
+      imgModel = imgModel.reshape(28,28)
+
+      print("Displaying altered MNIST image")
+      self.displayImg(self.x_testPlusDigit[elem],timeout=3)
+
+      print("Displaying probability_model() image from orig image")
+      self.displayImg(imgSoftmax,timeout=3)
+      
+      print("Displaying model() image from orig image")
+      self.displayImg(imgModel,timeout=3)
+      
+      print("Displaying orig MNIST image")
+      self.displayImg(self.x_test[elem],timeout=3)
+
+      if elem < 2:
+        self.tfCfgMisc.saveDigitArrayValues(imgSoftmax, fileNum=elem)
+        self.tfCfgMisc.saveDigitArrayValues(imgModel, fileNum=100+elem)
+        
   # ---------------------------- Internal -------------------------------
   
   # Override the 'TFConfig.build(paramDict)'
@@ -126,11 +149,11 @@ class TFConfigImage(TFConfig):
     
     self.digitLabelsDict[3] = numpy.asarray(
                               [[  0,  0,255,255,255,  0],
-                               [  0,  0,  0,  0,255,255],
+                               [  0,255,  0,  0,255,255],
                                [  0,  0,  0,  0,  0,255],
                                [  0,  0,  0,255,255,  0],
                                [  0,  0,  0,  0,  0,255],
-                               [  0,  0,  0,  0,255,255],
+                               [  0,255,  0,  0,255,255],
                                [  0,  0,255,255,255,  0]])
     
     self.digitLabelsDict[4] = numpy.asarray(
@@ -192,7 +215,7 @@ class TFConfigImage(TFConfig):
     xSize, ySize = img.shape
 
     #if not digit in self.digitLabelsDict:
-    #digit = 2
+    #digit = 3
 
     xLblSize, yLblSize = self.digitLabelsDict[digit].shape
     #print(xSize,ySize,",",xLblSize,yLblSize)

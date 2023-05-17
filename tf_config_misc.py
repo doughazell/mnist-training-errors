@@ -261,6 +261,23 @@ class TFConfigMisc(TFConfig):
       fp.write("Test img:" + str(type(testImg)) + " " + str(testImg.shape) + " " +
                str(type(testImg[0][0])) + "\n\n")
 
+      # 15/5/23 DH: https://docs.python.org/3.6/library/string.html#format-examples
+      """
+      "The FIELD_NAME is optionally followed by a CONVERSION FIELD, which is preceded by an 
+      exclamation point '!', and a FORMAT_SPEC, which is preceded by a colon ':'. 
+      -----------------                                                -----
+      These specify a non-default format for the replacement value."
+
+      "Three CONVERSION FLAGS are currently supported: '!s' which calls str() on the value, 
+      '!r' which calls repr() and '!a' which calls ascii()."
+
+      "FORMAT_SPEC ::= [[fill]align][sign][#][0][width][grouping_option][.precision][type]"
+      """
+      if isinstance(testImg[0][0], numpy.float32):
+        formatStr = "{:5.1f}"
+      else:
+        # "xyz "
+        formatStr = "{:4}"
       # ----------------- Write selected region --------------------
       
       xOffset = 15
@@ -271,17 +288,17 @@ class TFConfigMisc(TFConfig):
         xIdx += xOffset
 
         # 6/5/23 DH: When remove "Convert the sample data from integers to floating-point numbers"
-        #            "{:.2f}" becomes "{:3}"
+        #            "{:.2f}" becomes "{:3}" for integers
 
         # This a row printout (despite looking like a column in code)
-        fp.write("{:4}".format(testImg[xIdx][y]) +
-              "{:4}".format(testImg[xIdx][y+1]) +
-              "{:4}".format(testImg[xIdx][y+2]) +
-              "{:4}".format(testImg[xIdx][y+3]) +
-              "{:4}".format(testImg[xIdx][y+4]) +
-              "{:4}".format(testImg[xIdx][y+5]) +
-              "{:4}".format(testImg[xIdx][y+6]) +
-              "{:4}".format(testImg[xIdx][y+7]) + "\n")
+        fp.write(formatStr.format(testImg[xIdx][y]) +
+              formatStr.format(testImg[xIdx][y+1]) +
+              formatStr.format(testImg[xIdx][y+2]) +
+              formatStr.format(testImg[xIdx][y+3]) +
+              formatStr.format(testImg[xIdx][y+4]) +
+              formatStr.format(testImg[xIdx][y+5]) +
+              formatStr.format(testImg[xIdx][y+6]) +
+              formatStr.format(testImg[xIdx][y+7]) + "\n")
         
       fp.write("\n")
       # ------------------------------------------------------------
@@ -292,9 +309,12 @@ class TFConfigMisc(TFConfig):
       fp.write("\n")
       for x in range(xSize):
         for y in range(ySize):
-          fp.write("{:4}".format(testImg[x][y]))
+          fp.write(formatStr.format(testImg[x][y]))
         fp.write("\n")
       # ------------------------------------------------------------
+      sortedPixVals = sorted(testImg.reshape(784))
+      fp.write("\nSorted pixel values:\n")
+      fp.write(str(sortedPixVals))
 
   def getImgCheckTotals(self, img):
     #totals = []

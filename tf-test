@@ -215,8 +215,9 @@ def cpd(c):
 
 @cli.command()
 @click.option('-c', type=int, help="Number of MNIST digits to test")
+@click.option('-i', type=int, help="Number of training iterations of MNIST digits")
 @click.option('-d', is_flag=True, help="Display created MNIST images")
-def image(c,d):
+def image(c,i,d):
   """
   Train the TF Sequential DNN for image manipulation 
   
@@ -232,6 +233,11 @@ def image(c,d):
     trainCount = c
   else:
     trainCount = 10
+  
+  if i:
+    epochs = i
+  else:
+    epochs = 1
 
   tfCfgImage = TFConfigImage()
 
@@ -239,10 +245,8 @@ def image(c,d):
 
   x_trainSet = tfCfgImage.x_test[:trainCount]
   y_trainSet = tfCfgImage.x_testPlusDigit
-
-  #print(type(x_trainSet),type(y_trainSet),x_trainSet.shape,y_trainSet.shape)
   
-  paramDict = {'epochs': 1, 'x_trainSet': x_trainSet, 'y_trainSet': y_trainSet, 
+  paramDict = {'epochs': epochs, 'x_trainSet': x_trainSet, 'y_trainSet': y_trainSet, 
                'trainingNum': x_trainSet.shape[0] }
 
   tfCfgImage.runImageTrainer(paramDict)

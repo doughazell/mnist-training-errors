@@ -16,12 +16,18 @@ class TFModel(object):
       tf.keras.layers.Flatten(input_shape=(28, 28))
     ])
 
-    # 13/5/23 DH: 784-784 DNN
+    #model.add( tf.keras.layers.Dense(500) )
+    model.add( tf.keras.layers.Dense(784 * 2) )
+    model.add( tf.keras.layers.Dense(400) )
+    
+    # End Layer needs a full 28 * 28 image
     model.add( tf.keras.layers.Dense(28*28) )
     
     #loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
     #loss_fn = tf.keras.losses.CategoricalCrossentropy()
-    loss_fn = tf.keras.losses.Poisson()
+    #loss_fn = tf.keras.losses.Poisson()
+    #loss_fn = tf.keras.losses.BinaryCrossentropy()
+    loss_fn = tf.keras.losses.MeanSquaredError()
 
     model.compile(optimizer='adam',
                   loss=loss_fn,
