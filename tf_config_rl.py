@@ -180,11 +180,7 @@ class TFConfigRL(TFConfig):
         # 'accuracyPercent' rounded to 2 decimal places in 'TFConfig.modelEval()' so can reach 1.0, ie 100%
         # (Needs < 51 errors of 10,000 in 'self.rlRunPart()' for 2dp to round to 100%)
         while float(self.accuracyPercent) < 1.0:
-          # self.tfModel.createTrainedModel()::model.fit(x_trainSet, y_trainSet, epochs=epochs)
           
-          #self.tfModel.model.fit(x=paramDict['x_trainSet'] , y=paramDict['y_trainSet'])
-          #self.trgTotal += paramDict['trainingNum']
-
           self.tfModel.model.fit(x=self.x_test, y=self.y_test)
           x_testNum = self.x_test.shape[0]
           self.trgTotal += x_testNum
