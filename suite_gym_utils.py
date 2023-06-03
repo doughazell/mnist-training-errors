@@ -50,6 +50,8 @@ cart underneath it
 
 # -------------------------------------------------------------------------------------------------
 # 10/4/23 DH: Should these be added to a namespace (rather than add namespace to filename)?
+# 3/6/23 DH: ...yup we've just had a global variable issue with:
+#            'num_iterations' + 'DQNc51.num_iterations' clash...!!!
 gym_filename = 'imageio.mp4'
 gym_path = 'video'
 
@@ -57,8 +59,10 @@ gym_path = 'video'
 #            "The threshold for rewards is 475 for v1."
 env_name = "CartPole-v1"
 
-eval_interval = 1000
-num_iterations = 2000
+# 3/6/23 DH: Now 'createReturnsGraph()' arg to prevent global variable value clash
+#eval_interval = 1000
+#num_iterations = 2000
+
 batch_size = 64
 n_step_update = 2
 replay_buffer_capacity = 3
@@ -175,11 +179,11 @@ def addGraphic(imgEdit,cartVel):
 
   imgEdit.text((300,370), arrowStr, (33, 32, 30))
 
-def createReturnsGraph(returns,filename,path,dirNum=None):
+def createReturnsGraph(returns, iterations, eval_interval, filename,path,dirNum=None):
   # 10/4/23 DH:
   filepath = os.path.join(path, str(dirNum), filename)
 
-  steps = range(0, num_iterations + 1, eval_interval)
+  steps = range(0, iterations + 1, eval_interval)
   plt.plot(steps, returns)
   plt.ylabel('Average Return')
   plt.xlabel('Step')

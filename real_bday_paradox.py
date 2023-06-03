@@ -1,4 +1,3 @@
-
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
@@ -54,7 +53,6 @@ def run_many_simulations(repeatNumExceed, sim, dist = np.ones(365)/365):
 def printHist(hist, trials, bins, timeout=1):
   plt.clf()
   
-  #xAxis = trials/30
   if trials > 90000:
     xAxis = 1200
   else:
@@ -68,7 +66,6 @@ def printHist(hist, trials, bins, timeout=1):
   #plt.show()
   plt.draw()
   plt.waitforbuttonpress(timeout=timeout)
-  
 
 # 25/5/23 DH:
 def getRandomHist(bins,sim,printout=False):
@@ -88,9 +85,10 @@ def getRandomHist(bins,sim,printout=False):
 
 def printRandomHist():
   bins = 100
-  sim = 10000
+  sim = 5000
   hist = getRandomHist(bins, sim, printout=True)
 
+  print("Printing final",sim,"trial")
   printHist(hist,sim, bins, timeout=-1)
 
 def signal_handler(sig, frame):
@@ -102,53 +100,122 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 printRandomHist()
-sys.exit(0)
 
 #sim = 1000000
-sim = 3000
-#sim = 5
-repeatNumExceed = 5
+sim = 10000
+repeatNumExceed = 1
 print("Running",sim,"simulations...")
 counts = run_many_simulations(repeatNumExceed,sim)
-print("Counts:", type(counts), counts.shape)
+
+plt.clf()
 
 # https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.hist.html
-#repeat_histogram = plt.hist(counts, bins = np.arange(0,100))
-repeat_histogram = plt.hist(counts, bins = np.arange(0,1000))
+repeat_histogram = plt.hist(counts, bins = np.arange(0,100))
 
-"""
-for idx in range(len(repeat_histogram)):
-  print(idx,"-",repeat_histogram[idx])
-"""
-
-plt.title("The number of additions before "+str(repeatNumExceed+1)+" repeats")
+# 25/5/23 DH: Reset the x-axis values set above
+plt.xlim(xmin=0, xmax=100)
+plt.title("The number of additions before "+str(repeatNumExceed+1)+" repeats with 365 bins")
 plt.xlabel("$n$")
 plt.ylabel("Number of occurences")
+
+plt.draw()
+plt.show()
+#plt.waitforbuttonpress(timeout=-1)
+
+probFree = [
+  1,
+  0.9973,
+  0.9918,
+  0.9837,
+  0.9729,
+  0.9597,
+  0.9440,
+  0.9261,
+  0.9060,
+  0.8839,
+  0.8599,
+  0.8344,
+  0.8074,
+  0.7791,
+  0.7497,
+  0.7195,
+  0.6886,
+  0.6572,
+  0.6255,
+  0.5938,
+  0.5621,
+  0.5306,
+  0.4995,
+  0.4690, # 24
+]
+
+pairs = [
+  1,
+  3,
+  6,
+  10,
+  15,
+  21,
+  28,
+  36,
+  45,
+  55,
+  66,
+  78,
+  91,
+  105,
+  120,
+  136,
+  153,
+  171,
+  190,
+  210,
+  231,
+  253,
+  276,
+  300, # 24
+]
+
+"""
+  325,
+  351,
+  378,
+  406,
+  435,
+  465,
+  496,
+  528,
+  561,
+  595,
+  630,
+  666,
+  703,
+  741,
+  780,
+  820,
+"""
+
+
+plt.plot(pairs, probFree)
+plt.ylim(ymin=0, ymax=1.2)
+plt.title("Birthday Paradox")
+plt.xlabel("Number of pairs")
+plt.ylabel("Prob of free cell")
+
+plt.draw()
 plt.show()
 
 """
 print("2 people for a repeat occurred {} times, which is relatively {:.4%}".format(
   repeat_histogram[0][2], repeat_histogram[0][2]/sim
 ))
+print("1/365 = 0.0027")
 """
 
 rel_dist = plt.hist(counts, bins = np.arange(0,100), density=True)
-
-"""
-plt.xlabel("$n$")
-plt.ylabel("Probability of $n$")
-plt.show()
-"""
 
 print("50% of time, no more than {} people were needed for a repeat.".format(
   np.where(np.cumsum(rel_dist[0])>0.5)[0][0]
   )
 )
 
-"""
-repeatHistVals = repeat_histogram[0]
-approxDistVals = rel_dist[0]
-repeatHistValsSize = len(repeatHistVals)
-for idx in range(repeatHistValsSize):
-  print("Repeat Hist:",repeatHistVals[idx],"(",repeatHistVals[idx]/sim,"), Rel Dist:",approxDistVals[idx])
-"""

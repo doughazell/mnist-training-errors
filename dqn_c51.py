@@ -54,8 +54,8 @@ class DQNc51(object):
     self.log_interval = 200
     self.eval_interval = 1000
 
-    #num_iterations = 15000
-    self.num_iterations = 2000
+    #self.num_iterations = 15000
+    self.iterations = 4000
 
   # ==================================== TF-Agents ======================================
   def buildCatDQN(self):
@@ -131,7 +131,7 @@ class DQNc51(object):
     self.dirNum = None
 
     # 8/4/23 DH: num_iterations = 15000
-    for iterNum in range(num_iterations):
+    for iterNum in range(self.iterations):
 
       # 8/4/23 DH: https://www.tensorflow.org/agents/api_docs/python/tf_agents/agents/CategoricalDqnAgent#attributes
 
@@ -179,7 +179,9 @@ class DQNc51(object):
   # ------------------- DISPLAY RESULTS --------------------
   def displayResults(self):
 
-    createReturnsGraph(self.returns, "avg-return.jpg", gym_path, dirNum=self.dirNum)
+    # 3/6/23 DH: 'gym_path', 'gym_filename' are globals defined in 'suite_gym_utils.py'
+    #            (this should be namespaced...!!!)
+    createReturnsGraph(self.returns, self.iterations, self.eval_interval, "avg-return.jpg", gym_path, dirNum=self.dirNum)
 
     createEpisodeVideo(self.agent, gym_path, gym_filename, dirNum=self.dirNum)
 
