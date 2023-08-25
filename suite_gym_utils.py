@@ -13,6 +13,8 @@ from tf_agents.policies import random_tf_policy
 from tf_agents.environments import tf_py_environment
 
 from PIL import Image, ImageFont, ImageDraw
+# 20/8/23 DH: Written for 'imageio' version 2.4.0 and pip only allows 1 version of package, 
+#             so need to install in this directory with: "$ pip install imageio==2.4.0 --target=."
 import imageio
 import matplotlib.pyplot as plt
 
@@ -57,6 +59,7 @@ gym_path = 'video'
 
 # 8/4/23 DH: https://gymnasium.farama.org/environments/classic_control/cart_pole/#rewards
 #            "The threshold for rewards is 475 for v1."
+#            "Episode length is greater than 500 (200 for v0)"
 env_name = "CartPole-v1"
 
 # 3/6/23 DH: Now 'createReturnsGraph()' arg to prevent global variable value clash
@@ -123,6 +126,8 @@ def compute_avg_return(environment, policy, num_episodes=10):
       time_step = environment.step(action_step.action)
       episode_return += time_step.reward
 
+    # 6/6/23 DH: https://gymnasium.farama.org/environments/classic_control/cart_pole/#episode-end
+    #            "Episode length is greater than 500 (200 for v0)"
     print("Episode",_,"=",iCnt,"steps and last step returns:",episode_return.numpy()[0])
     
     total_return += episode_return
@@ -255,8 +260,11 @@ def createEpisodeVideo(agent, path, filename, dirNum=None):
         else:
           actionStr = "Right"
 
+        textStr = str(iCnt) + " - " + actionStr
         imgEdit = ImageDraw.Draw(imgXtra)
-        imgEdit.text((300,350), actionStr, (33, 32, 30))
+        # 4/6/23 DH; (x,y),string,(RGB color)
+        # https://pillow.readthedocs.io/en/stable/reference/ImageDraw.html#PIL.ImageDraw.ImageDraw.text
+        imgEdit.text((290,350), textStr, (33, 32, 30))
 
         # 7/4/23 DH: Add arrow with size + direction based on 'cartVel' USING ASCII-ART...obvs...
         #            https://www.appsloveworld.com/coding/python3x/69/how-can-i-draw-an-arrow-using-pil
@@ -271,6 +279,7 @@ def createEpisodeVideo(agent, path, filename, dirNum=None):
   #  imgFile.append_data(img)
 
   return dirNum
+  # --- END: createEpisodeVideo() ---
 
 # ------------------------------------ END: FUNCTIONS ------------------------------------------------
 
